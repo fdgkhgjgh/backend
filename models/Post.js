@@ -12,7 +12,9 @@ const postSchema = new mongoose.Schema({
     content: { type: String, required: true },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     imageUrl: { type: String },
-    comments: [commentSchema] // Add the comments array, using the commentSchema
+    comments: [commentSchema], // Add the comments array, using the commentSchema
+    likes: { type: Number, default: 0 },       // Add likes count
+    dislikes: { type: Number, default: 0 },    // Add dislikes count
 }, { timestamps: true });
 
 const Post = mongoose.model('Post', postSchema);

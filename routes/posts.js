@@ -156,6 +156,57 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
     }
 });
 
+// Like a post
+router.post('/:id/like', authenticateToken, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        post.likes += 1; // Increment likes
+        await post.save();
+
+        // IMPORTANT: Populate author and comments for consistency
+        // This step is VERY important.
+        const populatedPost = await Post.findById(req.params.id)
+            .populate('author', 'username')
+            .populate({
+                path: 'comments.author',
+                select: 'username'
+            });
+
+        res.status(200).json(populatedPost); // Return the UPDATED post
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Dislike a post
+router.post('/:id/dislike', authenticateToken, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        post.dislikes += 1;  // Increment dislikes
+        await post.save();
+        // IMPORTANT: Populate for a consistent response
+        // This step is very important.
+        const populatedPost = await Post.findById(req.params.id)
+            .populate('author', 'username')
+            .populate({
+                path: 'comments.author',
+                select: 'username'
+            });
+
+        res.status(200).json(populatedPost); // Return updated number
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 //Delete a comment of a post (protected route.)
 router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res) => {
