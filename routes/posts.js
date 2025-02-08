@@ -2,29 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
-const User = require('../models/User');  // Import User model
+const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('cloudinary').v2;
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// Configure multer and multer-storage-cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'mini-forum-uploads', // Optional: Organize uploads in a folder
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'], // Allowed file types
-  },
-});
-
-const upload = multer({ storage: storage });
+const upload = require('../middleware/upload'); // Import the upload middleware
 
 // Middleware to verify JWT and protect routes
 const authenticateToken = (req, res, next) => {
@@ -50,24 +30,28 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get a single post by ID
+// Get a single post by ID, *including* its comments
 router.get('/:id', async (req, res) => {
     try {
-      const post = await Post.findById(req.params.id).populate('author', 'username');
-      if (!post) {
-        return res.status(404).json({ message: 'Post not found' });
-      }
-      res.json(post);
+        const post = await Post.findById(req.params.id)
+            .populate('author', 'username')
+            .populate({  // Populate comments and their authors
+                path: 'comments.author',
+                select: 'username'
+            });
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+        res.json(post);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+        res.status(500).json({ message: error.message });
     }
-  });
-  
+});
 
 // Create a new post (protected route)
 router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
   try {
-
     const { title, content } = req.body;
         if (!title || !content) {
             return res.status(400).json({message: "Title and content are required."})
@@ -76,7 +60,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
       title,
       content,
       author: req.user.userId, // Use userId from the JWT payload
-      imageUrl: req.file ? req.file.path : undefined, // Cloudinary URL if a file was uploaded
+      imageUrl: req.file ? req.file.path : undefined, // Cloudinary URL if file was uploaded
     });
 
     const savedPost = await newPost.save();
@@ -137,31 +121,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 
 
-module.exports = router;
-// backend/routes/posts.js (Additions and Modifications)
-
-// ... (existing imports and middleware) ...
-
-// Get a single post by ID, *including* its comments
-router.get('/:id', async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.id)
-            .populate('author', 'username')
-            .populate({  // Populate comments and their authors
-                path: 'comments.author',
-                select: 'username'
-            });
-
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
-        res.json(post);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-
 // Add a comment to a post (protected route)
 router.post('/:id/comments', authenticateToken, async (req, res) => {
     try {
@@ -201,37 +160,35 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
 //Delete a comment of a post (protected route.)
 router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res) => {
     try {
-      const {postId, commentId} = req.params;
-      const post = await Post.findById(postId);
+        const {postId, commentId} = req.params;
+        const post = await Post.findById(postId);
 
-	   //Check if the post exists.
-		if (!post) {
-		  return res.status(404).json({message: "Post not found."})
-		}
-
-		//Find the comment.
-		const comment = post.comments.id(commentId);
-		//Check if the comment exists.
-		 if (!comment) {
-           return res.status(404).json({message: "Comment not found."})
+        //Check if the post exists.
+         if (!post) {
+            return res.status(404).json({message: "Post not found."})
          }
 
-         //Check if the current user is the author the comment.
-          if (comment.author.toString() !== req.user.userId) {
-            return res.status(403).json({message: "You are not authorized to delete this comment."})
+         //Find the comment.
+         const comment = post.comments.id(commentId);
+         //Check if the comment exists.
+          if (!comment) {
+            return res.status(404).json({message: "Comment not found."})
           }
 
-          //Remove the comment.
-          comment.deleteOne(); // Use deleteOne() to remove subdocument.
-          await post.save();
+          //Check if the current user is the author the comment.
+           if (comment.author.toString() !== req.user.userId) {
+             return res.status(403).json({message: "You are not authorized to delete this comment."})
+           }
 
-          res.status(200).json({message: "Comment deleted suceessfully."})
+           //Remove the comment.
+           comment.deleteOne(); // Use deleteOne() to remove subdocument.
+           await post.save();
+
+           res.status(200).json({message: "Comment deleted suceessfully."})
 
     } catch(error) {
-         res.status(500).json({message: error.message})
+        res.status(500).json({message: error.message})
     }
 })
-
-
 
 module.exports = router;
