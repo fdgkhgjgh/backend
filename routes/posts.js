@@ -192,3 +192,20 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
 })
 
 module.exports = router;
+
+  //Get user all posts.
+  router.get('/user/:userId', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+         // Check if the current user is authorized to get posts of this user
+         if (req.user.userId !== userId) {
+             return res.status(403).json({ message: "You are not authorized to get posts of this user." });
+           }
+        // Find all posts by the specified user ID
+        const posts = await Post.find({ author: userId }).sort({ createdAt: -1 });
+        res.json(posts);
+
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+})
