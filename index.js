@@ -11,10 +11,10 @@ const PORT = process.env.PORT || 5000;
 
 // --- CORS Configuration ---
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://money666.us.kg,https://frontend-dke.pages.dev', // Use environment variable for flexibility
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed HTTP methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
-    credentials: true, // Important for cookies/auth headers with HTTPS
+    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://money666.us.kg', 'https://frontend-dke.pages.dev'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
 };
 
 app.use(cors(corsOptions)); // Use the configured options
