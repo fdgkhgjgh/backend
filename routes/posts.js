@@ -122,7 +122,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 
 // Add a comment to a post (protected route)
-router.post('/:id/comments', authenticateToken, async (req, res) => {
+router.post('/:id/comments', authenticateToken, upload.single('image'), async (req, res) => { // Add upload middleware
     try {
         const post = await Post.findById(req.params.id);
         if (!post) {
@@ -137,13 +137,12 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
         const newComment = {
             author: req.user.userId,
             text: text,
+            imageUrl: req.file ? req.file.path : undefined, // Store Cloudinary URL
         };
 
         post.comments.push(newComment);
         await post.save();
 
-        // Populate the author of the *new* comment before sending the response.
-        // This is important for immediate display on the frontend.
         const populatedPost = await Post.findById(req.params.id)
             .populate('author', 'username')
             .populate({
@@ -151,11 +150,12 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
                 select: 'username'
             });
 
-        res.status(201).json(populatedPost); // Return the updated post (with the new comment)
+        res.status(201).json(populatedPost);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 //Delete a comment of a post (protected route.)
 router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res) => {
