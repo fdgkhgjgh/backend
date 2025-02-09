@@ -45,12 +45,14 @@ router.get('/:id', async (req, res) => {
                 path: 'comments.author',
                 select: 'username'
             })
-            .select('+upvotes +downvotes +title +content +imageUrl +createdAt'); // Add this line to select the fields you need
-
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
-        res.json(post);
+         // Explicitly select all the desired fields
+        const selectedPost = await Post.findById(post._id)
+            .select('+upvotes +downvotes +title +content +imageUrl +createdAt +author +comments');
+
+        res.json(selectedPost);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -232,7 +234,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 // Upvote a post
 router.post('/:id/upvote', authenticateToken, async (req, res) => {
     try {
-        if (!mongoose.isValidObjectId(req.params.id)) {
+         if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
         }
         const post = await Post.findById(req.params.id);
