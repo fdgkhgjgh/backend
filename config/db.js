@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 
 mongoose.set('debug', true);
+mongoose.set('strictPopulate', false); // Add this line before connecting
 const connect = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
