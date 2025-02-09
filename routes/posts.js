@@ -44,20 +44,16 @@ router.get('/:id', async (req, res) => {
             .populate({
                 path: 'comments.author',
                 select: 'username'
-            })
+            });
 
         if (!post) {
             console.log(`Post with id ${req.params.id} not found`); // Log if post is not found
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Explicitly select all the desired fields
-        const selectedPost = await Post.findById(post._id)
-            .select('+upvotes +downvotes +title +content +imageUrl +createdAt +author +comments');
+        console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
 
-        console.log(`Post with id ${req.params.id} found:`, selectedPost); // Log the selectedPost
-
-        res.json(selectedPost);
+        res.json(post);  // Send back the populated post directly!
     } catch (error) {
         console.error("Error fetching post:", error); // Log any errors
         res.status(500).json({ message: error.message });
