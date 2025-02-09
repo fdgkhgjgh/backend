@@ -184,6 +184,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
             return res.status(400).json({ message: 'Invalid post ID' });
         }
         const {postId, commentId} = req.params;
+
         const post = await Post.findById(postId);
 
         //Check if the post exists.
@@ -193,6 +194,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
 
          //Find the comment.
          const comment = post.comments.id(commentId);
+
          //Check if the comment exists.
           if (!comment) {
             return res.status(404).json({message: "Comment not found."})
@@ -204,7 +206,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
            }
 
            //Remove the comment.
-           comment.deleteOne(); // Use deleteOne() to remove subdocument.
+           post.comments.pull({ _id: commentId }); // Use pull to remove the comment.
            await post.save();
 
            res.status(200).json({message: "Comment deleted suceessfully."})
@@ -213,6 +215,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
         res.status(500).json({message: error.message})
     }
 })
+
 
 module.exports = router;
 
