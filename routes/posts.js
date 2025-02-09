@@ -1,3 +1,4 @@
+// backend/routes/posts.js
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
@@ -20,11 +21,37 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Get all posts
+// Get all posts (with pagination)
 router.get('/', async (req, res) => {
+    const { page = 1, limit = 8 } = req.query; // Default page=1, limit=8
+    const parsedLimit = parseInt(limit); // Ensure limit is a number
+    const parsedPage = parseInt(page);
+
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+        return res.status(400).json({ message: 'Invalid limit value.  Must be a positive number.' });
+    }
+
+    if (isNaN(parsedPage) || parsedPage <= 0) {
+        return res.status(400).json({ message: 'Invalid page value. Must be a positive number.' });
+    }
+
     try {
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('author', 'username'); // Populate author's username
-        res.json(posts);
+        const skip = (parsedPage - 1) * parsedLimit; // Calculate how many posts to skip
+        const posts = await Post.find()
+            .sort({ createdAt: -1 })
+            .populate('author', 'username')
+            .skip(skip)
+            .limit(parsedLimit);
+
+        const totalPosts = await Post.countDocuments(); // Get the total number of posts
+        const totalPages = Math.ceil(totalPosts / parsedLimit); // Calculate total pages
+
+        res.json({
+            posts,
+            totalPages,
+            currentPage: parsedPage,
+            totalPosts
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
