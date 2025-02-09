@@ -44,7 +44,8 @@ router.get('/:id', async (req, res) => {
             .populate({
                 path: 'comments.author',
                 select: 'username'
-            }).select('+upvotes +downvotes');
+            })
+            .select('+upvotes +downvotes +title +content +imageUrl +createdAt'); // Add this line to select the fields you need
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
