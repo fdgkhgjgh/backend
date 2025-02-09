@@ -1,6 +1,7 @@
 // backend/config/db.js
 const mongoose = require('mongoose');
 
+mongoose.set('debug', true);
 const connect = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {

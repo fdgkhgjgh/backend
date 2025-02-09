@@ -5,6 +5,7 @@ const Post = require('../models/Post');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload'); // Import the upload middleware
+const mongoose = require('mongoose'); // Ensure Mongoose is required
 
 // Middleware to verify JWT and protect routes
 const authenticateToken = (req, res, next) => {
@@ -32,13 +33,18 @@ router.get('/', async (req, res) => {
 
 // Get a single post by ID, *including* its comments
 router.get('/:id', async (req, res) => {
+    // Check if the ID is a valid ObjectId
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({ message: 'Invalid post ID' });
+    }
+
     try {
         const post = await Post.findById(req.params.id)
             .populate('author', 'username')
-            .populate({  // Populate comments and their authors
+            .populate({
                 path: 'comments.author',
                 select: 'username'
-            });
+            }).select('+upvotes +downvotes');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -74,6 +80,9 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
 // Update a post (protected route - and check ownership)
 router.put('/:id', authenticateToken, upload.single('image'), async (req, res) => {
     try {
+         if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
         const post = await Post.findById(req.params.id);
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -101,6 +110,9 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
 // Delete a post (protected route - and check ownership)
 router.delete('/:id', authenticateToken, async (req, res) => {
    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
       const post = await Post.findById(req.params.id);
       if (!post) {
         return res.status(404).json({message: "Post not found."})
@@ -115,7 +127,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.status(200).json({message: "Post deleted successfully."})
 
    } catch (error) {
-     res.status(500).json({message: error.message})
+     res.status(500).json({message: error.message })
    }
 });
 
@@ -124,6 +136,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // Add a comment to a post (protected route)
 router.post('/:id/comments', authenticateToken, upload.single('image'), async (req, res) => { // Add upload middleware
     try {
+         if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
         const post = await Post.findById(req.params.id);
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -160,6 +175,9 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
 //Delete a comment of a post (protected route.)
 router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res) => {
     try {
+         if (!mongoose.isValidObjectId(req.params.postId)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
         const {postId, commentId} = req.params;
         const post = await Post.findById(postId);
 
@@ -213,6 +231,9 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 // Upvote a post
 router.post('/:id/upvote', authenticateToken, async (req, res) => {
     try {
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
         const post = await Post.findById(req.params.id);
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -230,6 +251,9 @@ router.post('/:id/upvote', authenticateToken, async (req, res) => {
 // Downvote a post
 router.post('/:id/downvote', authenticateToken, async (req, res) => {
     try {
+         if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
         const post = await Post.findById(req.params.id);
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -239,25 +263,6 @@ router.post('/:id/downvote', authenticateToken, async (req, res) => {
         await post.save();
 
         res.json({ upvotes: post.upvotes, downvotes: post.downvotes }); // Send back updated counts
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// Get a single post by ID, *including* its comments (modified to include upvotes/downvotes)
-router.get('/:id', async (req, res) => {
-    try {
-        const post = await Post.findById(req.params.id)
-            .populate('author', 'username')
-            .populate({  // Populate comments and their authors
-                path: 'comments.author',
-                select: 'username'
-            });
-
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
-        res.json(post);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
