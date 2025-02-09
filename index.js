@@ -29,6 +29,8 @@ const db = require('./config/db');
 db.connect();
 
 // Routes
+app.use(express.json({ limit: '50mb' })); // Adjust limit as needed
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 

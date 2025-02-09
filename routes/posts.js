@@ -60,7 +60,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new post (protected route)
-router.post('/', authenticateToken, upload.array('images', 5), async (req, res) => {  //Use upload.array middleware.
+router.post('/', authenticateToken, upload.array('files', 5), async (req, res) => {  //Use upload.array middleware.
 
   try {
     const { title, content } = req.body;
@@ -68,13 +68,25 @@ router.post('/', authenticateToken, upload.array('images', 5), async (req, res) 
         return res.status(400).json({message: "Title and content are required."})
     }
 
-    const imageUrls = req.files ? req.files.map(file => file.path) : []; //Get all URLs in array.
+    const imageUrls = [];
+    const videoUrls = [];
+
+        if (req.files && req.files.length > 0) {
+            req.files.forEach(file => {
+                if (file.mimetype.startsWith('image/')) {
+                    imageUrls.push(file.path);
+                } else if (file.mimetype.startsWith('video/')) {
+                    videoUrls.push(file.path);
+                }
+            });
+        }
 
     const newPost = new Post({
       title,
       content,
       author: req.user.userId, // Use userId from the JWT payload
       imageUrls: imageUrls, // Store the array of image URLs
+      videoUrls: videoUrls,  //Store the array of video URLs
     });
 
     const savedPost = await newPost.save();
@@ -86,7 +98,7 @@ router.post('/', authenticateToken, upload.array('images', 5), async (req, res) 
 });
 
 // Update a post (protected route - and check ownership)
-router.put('/:id', authenticateToken, upload.array('images', 5), async (req, res) => {
+router.put('/:id', authenticateToken, upload.array('files', 5), async (req, res) => {
     try {
          if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
@@ -102,10 +114,22 @@ router.put('/:id', authenticateToken, upload.array('images', 5), async (req, res
 
         post.title = req.body.title || post.title;  // Update title if provided
         post.content = req.body.content || post.content;   //Update content if provided.
-        // Update image URLs if new images are uploaded
-        if (req.files && req.files.length > 0) {
-          post.imageUrls = req.files.map(file => file.path);
-        }
+
+       const imageUrls = [];
+       const videoUrls = [];
+
+          if (req.files && req.files.length > 0) {
+              req.files.forEach(file => {
+                  if (file.mimetype.startsWith('image/')) {
+                      imageUrls.push(file.path);
+                  } else if (file.mimetype.startsWith('video/')) {
+                      videoUrls.push(file.path);
+                  }
+              });
+          }
+
+        post.imageUrls = imageUrls;
+        post.videoUrls = videoUrls
 
         const updatedPost = await post.save();
         res.status(200).json(updatedPost);

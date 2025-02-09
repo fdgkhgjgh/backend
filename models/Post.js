@@ -10,7 +10,8 @@ const postSchema = new mongoose.Schema({
     title: { type: String, required: true },
     content: { type: String, required: true },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    imageUrls: [{ type: String }], // Array of image URLs  <----CHANGE THIS!
+    imageUrls: [{ type: String }], // Array of image URLs  <----ADD THIS!
+    videoUrls: [{ type: String }],  //Array of video URLs  <----ADD THIS!
     upvotes: { type: Number, default: 0 },  // Add this
     downvotes: { type: Number, default: 0 }, // Add this
     comments: [commentSchema], // <--- ADD THIS LINE! This is the key fix!
