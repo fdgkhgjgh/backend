@@ -23,10 +23,30 @@ const authenticateToken = (req, res, next) => {
 
 // Get all posts
 router.get('/', async (req, res) => {
+    const page = parseInt(req.query.page) || 1; // Current page number (default to 1)
+    const limit = 8; // Number of posts per page
+    const skip = (page - 1) * limit; // Number of posts to skip
+
     try {
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('author', 'username').select('+upvotes +downvotes'); // Populate author's username
-        res.json(posts);
+        const posts = await Post.find()
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('author', 'username')
+            .select('+upvotes +downvotes');
+
+        const totalPosts = await Post.countDocuments(); // Get the total number of posts
+        const totalPages = Math.ceil(totalPosts / limit); // Calculate the total number of pages
+
+        console.log(`Page ${page}: Retrieved ${posts.length} posts (total ${totalPosts})`); //Log retrieved posts
+
+        res.json({
+            posts,
+            currentPage: page,
+            totalPages: totalPages,
+        });
     } catch (error) {
+        console.error("Error fetching posts:", error);
         res.status(500).json({ message: error.message });
     }
 });
