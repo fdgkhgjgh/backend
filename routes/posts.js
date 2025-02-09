@@ -23,7 +23,7 @@ const authenticateToken = (req, res, next) => {
 // Get all posts
 router.get('/', async (req, res) => {
     try {
-        const posts = await Post.find().sort({ createdAt: -1 }).populate('author', 'username'); // Populate author's username
+        const posts = await Post.find().sort({ createdAt: -1 }).populate('author', 'username').select('+upvotes +downvotes'); // Populate author's username
         res.json(posts);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -194,7 +194,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
 module.exports = router;
 
   //Get user all posts.
-  router.get('/user/:userId', authenticateToken, async (req, res) => {
+router.get('/user/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
          // Check if the current user is authorized to get posts of this user
@@ -202,10 +202,63 @@ module.exports = router;
              return res.status(403).json({ message: "You are not authorized to get posts of this user." });
            }
         // Find all posts by the specified user ID
-        const posts = await Post.find({ author: userId }).sort({ createdAt: -1 });
+        const posts = await Post.find({ author: userId }).sort({ createdAt: -1 }).select('+upvotes +downvotes');
         res.json(posts);
 
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
 })
+
+// Upvote a post
+router.post('/:id/upvote', authenticateToken, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        post.upvotes += 1; // Increment upvotes
+        await post.save();
+
+        res.json({ upvotes: post.upvotes, downvotes: post.downvotes }); // Send back updated counts
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Downvote a post
+router.post('/:id/downvote', authenticateToken, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        post.downvotes += 1; // Increment downvotes
+        await post.save();
+
+        res.json({ upvotes: post.upvotes, downvotes: post.downvotes }); // Send back updated counts
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get a single post by ID, *including* its comments (modified to include upvotes/downvotes)
+router.get('/:id', async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id)
+            .populate('author', 'username')
+            .populate({  // Populate comments and their authors
+                path: 'comments.author',
+                select: 'username'
+            });
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
