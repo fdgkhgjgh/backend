@@ -1,4 +1,3 @@
-// backend/models/Post.js
 const mongoose = require('mongoose');
 
 const commentSchema = new mongoose.Schema({
@@ -11,7 +10,7 @@ const postSchema = new mongoose.Schema({
     title: { type: String, required: true },
     content: { type: String, required: true },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    imageUrl: { type: String },
+    imageUrls: [{ type: String }], // Array of image URLs  <----CHANGE THIS!
     upvotes: { type: Number, default: 0 },  // Add this
     downvotes: { type: Number, default: 0 }, // Add this
     comments: [commentSchema], // <--- ADD THIS LINE! This is the key fix!

@@ -1,4 +1,3 @@
-// backend/routes/posts.js
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
@@ -61,17 +60,21 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new post (protected route)
-router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
+router.post('/', authenticateToken, upload.array('images', 5), async (req, res) => {  //Use upload.array middleware.
+
   try {
     const { title, content } = req.body;
-        if (!title || !content) {
-            return res.status(400).json({message: "Title and content are required."})
-        }
+    if (!title || !content) {
+        return res.status(400).json({message: "Title and content are required."})
+    }
+
+    const imageUrls = req.files ? req.files.map(file => file.path) : []; //Get all URLs in array.
+
     const newPost = new Post({
       title,
       content,
       author: req.user.userId, // Use userId from the JWT payload
-      imageUrl: req.file ? req.file.path : undefined, // Cloudinary URL if file was uploaded
+      imageUrls: imageUrls, // Store the array of image URLs
     });
 
     const savedPost = await newPost.save();
@@ -83,7 +86,7 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
 });
 
 // Update a post (protected route - and check ownership)
-router.put('/:id', authenticateToken, upload.single('image'), async (req, res) => {
+router.put('/:id', authenticateToken, upload.array('images', 5), async (req, res) => {
     try {
          if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
@@ -99,8 +102,9 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
 
         post.title = req.body.title || post.title;  // Update title if provided
         post.content = req.body.content || post.content;   //Update content if provided.
-        if (req.file) {
-            post.imageUrl = req.file.path;   //Update image if new image uploaded.
+        // Update image URLs if new images are uploaded
+        if (req.files && req.files.length > 0) {
+          post.imageUrls = req.files.map(file => file.path);
         }
 
         const updatedPost = await post.save();
