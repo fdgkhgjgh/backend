@@ -338,11 +338,18 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
          }
 
          //Find the comment.
-         const comment = post.comments.id(commentId);
+         //const comment = post.comments.id(commentId);
+         //Remove this line of code because u are not using anymore
 
          //Check if the comment exists.
+          //if (!comment) {
+          //  return res.status(404).json({message: "Comment not found."})
+          //}
+          //Remove this line of code because u are not using anymore
+
+          const comment = await Comment.findById(commentId);
           if (!comment) {
-            return res.status(404).json({message: "Comment not found."})
+               return res.status(404).json({ message: 'Comment not found' });
           }
 
           //Check if the current user is the author the comment.
@@ -351,8 +358,13 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
            }
 
            //Remove the comment.
-           post.comments.pull({ _id: commentId }); // Use pull to remove the comment.
-           await post.save();
+           //post.comments.pull({ _id: commentId }); // Use pull to remove the comment.
+           //await post.save();
+           //Remove this line of code
+
+          post.comments.pull(commentId);
+          await post.save();
+          await Comment.findByIdAndDelete(commentId); // And delete the comment
 
            res.status(200).json({message: "Comment deleted suceessfully."})
 
