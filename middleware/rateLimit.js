@@ -27,4 +27,17 @@ const commentLimiter = rateLimit({
   }
 });
 
-module.exports = { postLimiter, commentLimiter };
+const replyLimiter = rateLimit({
+    windowMs: 30 * 1000, // 30 second window
+    max: 3, // max 3 replies per 30 seconds per IP
+    message: 'Too many replies created from this IP, please try again after 30 seconds',
+    keyGenerator: function (req /*, res*/) {
+      return req.ip // use ip address as key
+    },
+    handler: function (req, res, next) {
+      console.warn(`Rate limit triggered for IP: ${req.ip} on REPLY creation`);
+      return res.status(429).json({ message: this.message });
+    }
+  });
+
+module.exports = { postLimiter, commentLimiter, replyLimiter };

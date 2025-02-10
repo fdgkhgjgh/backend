@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
+const Comment = require('../models/Comment'); // Import the Comment model
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload'); // Import the upload middleware
@@ -61,17 +62,34 @@ router.get('/', async (req, res) => {
 
 // Get a single post by ID, *including* its comments
 router.get('/:id', async (req, res) => {
-    // Check if the ID is a valid ObjectId
-    if (!mongoose.isValidObjectId(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid post ID' });
+    // ... ID validation ...
+
+    const { page = 1, limit = 20 } = req.query; // Pagination parameters
+    const parsedLimit = parseInt(limit);
+    const parsedPage = parseInt(page);
+
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+        return res.status(400).json({ message: 'Invalid limit value.' });
+    }
+
+    if (isNaN(parsedPage) || parsedPage <= 0) {
+        return res.status(400).json({ message: 'Invalid page value.' });
     }
 
     try {
         const post = await Post.findById(req.params.id)
             .populate('author', 'username')
             .populate({
-                path: 'comments.author',
-                select: 'username'
+                path: 'comments',
+                options: {
+                    skip: (parsedPage - 1) * parsedLimit, //Apply pagination.
+                    limit: parsedLimit,
+                    sort: { createdAt: -1 }, //Sort comments by newest first.
+                },
+                populate: {  //Nested populate to get comment authors
+                    path: 'author',
+                    select: 'username'
+                }
             });
 
         if (!post) {
@@ -79,14 +97,25 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
+        //Also need totalComments for pagination.
+        const totalComments = await Comment.countDocuments({ post: req.params.id });
+        const totalPages = Math.ceil(totalComments / parsedLimit);
+
         console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
 
-        res.json(post);  // Send back the populated post directly!
+        res.json({
+            post,
+            totalPages,
+            currentPage: parsedPage,
+            totalComments,
+        });
+
     } catch (error) {
         console.error("Error fetching post:", error); // Log any errors
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // Create a new post (protected route)
 router.post('/', authenticateToken, upload.array('files', 5), async (req, res) => {  //Use upload.array middleware.
@@ -232,6 +261,49 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
         res.status(500).json({ message: error.message });
     }
 });
+
+// Add a reply to a comment (protected route)
+router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.single('image'), async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.postId) || !mongoose.isValidObjectId(req.params.commentId)) {
+            return res.status(400).json({ message: 'Invalid post or comment ID' });
+        }
+
+        const post = await Post.findById(req.params.postId);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        const parentComment = await Comment.findById(req.params.commentId);
+        if (!parentComment) {
+            return res.status(404).json({ message: 'Parent comment not found' });
+        }
+
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({ message: 'Reply text is required' });
+        }
+
+        const newComment = new Comment({
+            author: req.user.userId,
+            text: text,
+            imageUrl: req.file ? req.file.path : undefined,
+            post: req.params.postId,
+            parentComment: req.params.commentId,
+        });
+
+        await newComment.save();
+
+        parentComment.replies.push(newComment._id);
+        await parentComment.save();
+
+        res.status(201).json(newComment);
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 
 //Delete a comment of a post (protected route.)
