@@ -14,6 +14,8 @@ const postSchema = new mongoose.Schema({
     videoUrls: [{ type: String }],  //Array of video URLs  <----ADD THIS!
     upvotes: { type: Number, default: 0 },  // Add this
     downvotes: { type: Number, default: 0 }, // Add this
+    upvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
+    downvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
     comments: [commentSchema], // <--- ADD THIS LINE! This is the key fix!
 }, { timestamps: true });
 

@@ -294,7 +294,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 // Upvote a post
 router.post('/:id/upvote', authenticateToken, async (req, res) => {
     try {
-         if (!mongoose.isValidObjectId(req.params.id)) {
+        if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
         }
         const post = await Post.findById(req.params.id);
@@ -302,10 +302,18 @@ router.post('/:id/upvote', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        post.upvotes += 1; // Increment upvotes
+        const userId = req.user.userId;
+
+        if (post.upvotedBy.includes(userId) || post.downvotedBy.includes(userId)) {
+            return res.status(400).json({ message: 'You have already voted on this post' });
+        }
+
+        post.upvotes += 1;
+        post.upvotedBy.push(userId); // Add user to upvotedBy array
+
         await post.save();
 
-        res.json({ upvotes: post.upvotes, downvotes: post.downvotes }); // Send back updated counts
+        res.json({ upvotes: post.upvotes, downvotes: post.downvotes });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -314,7 +322,7 @@ router.post('/:id/upvote', authenticateToken, async (req, res) => {
 // Downvote a post
 router.post('/:id/downvote', authenticateToken, async (req, res) => {
     try {
-         if (!mongoose.isValidObjectId(req.params.id)) {
+        if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
         }
         const post = await Post.findById(req.params.id);
@@ -322,10 +330,17 @@ router.post('/:id/downvote', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        post.downvotes += 1; // Increment downvotes
+        const userId = req.user.userId;
+
+         if (post.upvotedBy.includes(userId) || post.downvotedBy.includes(userId)) {
+            return res.status(400).json({ message: 'You have already voted on this post' });
+        }
+
+        post.downvotes += 1;
+        post.downvotedBy.push(userId); // Add user to downvotedBy array
         await post.save();
 
-        res.json({ upvotes: post.upvotes, downvotes: post.downvotes }); // Send back updated counts
+        res.json({ upvotes: post.upvotes, downvotes: post.downvotes });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
