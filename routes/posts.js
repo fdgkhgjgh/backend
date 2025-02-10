@@ -240,21 +240,32 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
             return res.status(400).json({ message: 'Comment text is required' });
         }
 
-        const newComment = {
+       //**********************START of CHANGES here!*******************
+        //Create comment first.
+         const newComment = new Comment({
             author: req.user.userId,
             text: text,
             imageUrl: req.file ? req.file.path : undefined, // Store Cloudinary URL
-        };
+            post: req.params.id  //Add post id,VERY IMPORTANT
+        });
+        await newComment.save(); //Save it before you push it.
+        //**********************END of CHANGES here!*******************
 
-        post.comments.push(newComment);
+        post.comments.push(newComment._id); //Push comment id.
         await post.save();
 
+       //**********************START of CHANGES here!*******************
+       //Populate the author.
         const populatedPost = await Post.findById(req.params.id)
             .populate('author', 'username')
             .populate({
-                path: 'comments.author',
-                select: 'username'
+                path: 'comments',
+                populate: {  //Nested populate to get comment authors
+                    path: 'author',
+                    select: 'username'
+                }
             });
+        //**********************END of CHANGES here!*******************
 
         res.status(201).json(populatedPost);
     } catch (error) {
@@ -296,8 +307,13 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         parentComment.replies.push(newComment._id);
         await parentComment.save();
+//**********************START of CHANGES here!*******************
+       //Populate the author.
+        const populatedComment = await Comment.findById(newComment._id)
+            .populate('author', 'username')
 
-        res.status(201).json(newComment);
+        res.status(201).json(populatedComment);
+//**********************END of CHANGES here!*******************
 
     } catch (error) {
         res.status(500).json({ message: error.message });
