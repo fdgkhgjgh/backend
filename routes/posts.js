@@ -1,4 +1,3 @@
-// backend/routes/posts.js
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
@@ -402,74 +401,4 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
 
 module.exports = router;
 
-  //Get user all posts.
-router.get('/user/:userId', authenticateToken, async (req, res) => {
-    try {
-        const { userId } = req.params;
-         // Check if the current user is authorized to get posts of this user
-         if (req.user.userId !== userId) {
-             return res.status(403).json({ message: "You are not authorized to get posts of this user." });
-           }
-        // Find all posts by the specified user ID
-        const posts = await Post.find({ author: userId }).sort({ createdAt: -1 }).select('+upvotes +downvotes');
-        res.json(posts);
-
-    } catch (error) {
-      res.status(500).json({ message: error.message })
-    }
-})
-
-// Upvote a post
-router.post('/:id/upvote', authenticateToken, async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.id)) {
-            return res.status(400).json({ message: 'Invalid post ID' });
-        }
-        const post = await Post.findById(req.params.id);
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
-
-        const userId = req.user.userId;
-
-        if (post.upvotedBy.includes(userId) || post.downvotedBy.includes(userId)) {
-            return res.status(400).json({ message: 'You have already voted on this post' });
-        }
-
-        post.upvotes += 1;
-        post.upvotedBy.push(userId); // Add user to upvotedBy array
-
-        await post.save();
-
-        res.json({ upvotes: post.upvotes, downvotes: post.downvotes });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// Downvote a post
-router.post('/:id/downvote', authenticateToken, async (req, res) => {
-    try {
-        if (!mongoose.isValidObjectId(req.params.id)) {
-            return res.status(400).json({ message: 'Invalid post ID' });
-        }
-        const post = await Post.findById(req.params.id);
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
-
-        const userId = req.user.userId;
-
-         if (post.upvotedBy.includes(userId) || post.downvotedBy.includes(userId)) {
-            return res.status(400).json({ message: 'You have already voted on this post' });
-        }
-
-        post.downvotes += 1;
-        post.downvotedBy.push(userId); // Add user to downvotedBy array
-        await post.save();
-
-        res.json({ upvotes: post.upvotes, downvotes: post.downvotes });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+  //
