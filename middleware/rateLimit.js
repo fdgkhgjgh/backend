@@ -16,7 +16,7 @@ const postLimiter = rateLimit({
 
 const commentLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute window
-  max: 10, // max 5 comments per minute per IP
+  max: 5, // max 5 comments per minute per IP
   message: 'Too many comments created from this IP, please try again after a minute',
   keyGenerator: function (req /*, res*/) {
     return req.ip // use ip address as key
