@@ -6,6 +6,8 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload'); // Import the upload middleware
 const mongoose = require('mongoose'); // Ensure Mongoose is required
+const { postLimiter, commentLimiter } = require('../middleware/rateLimit'); // Import rate limiters
+
 
 // Middleware to verify JWT and protect routes
 const authenticateToken = (req, res, next) => {
