@@ -320,6 +320,32 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
     }
 });
 
+// Get replies to a comment
+router.get('/comments/:commentId/replies', async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.commentId)) {
+            return res.status(400).json({ message: 'Invalid comment ID' });
+        }
+
+        const comment = await Comment.findById(req.params.commentId)
+            .populate({
+                path: 'replies',
+                populate: { // Populate author of each reply
+                    path: 'author',
+                    select: 'username'
+                }
+            });
+
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        res.json(comment.replies);
+    } catch (error) {
+        console.error("Error fetching replies:", error);
+        res.status(500).json({ message: error.message });
+    }
+});
 
 
 //Delete a comment of a post (protected route.)
