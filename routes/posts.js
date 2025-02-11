@@ -61,7 +61,6 @@ router.get('/', async (req, res) => {
 
 // Get a single post by ID, *including* its comments and replies
 router.get('/:id', async (req, res) => {
-    // Check if the ID is a valid ObjectId
     if (!mongoose.isValidObjectId(req.params.id)) {
         return res.status(400).json({ message: 'Invalid post ID' });
     }
@@ -71,22 +70,31 @@ router.get('/:id', async (req, res) => {
             .populate('author', 'username')
             .populate({
                 path: 'comments',
-                populate: {
-                    path: 'author',
-                    select: 'username'
-                }
+                populate: [
+                    {
+                        path: 'author',
+                        select: 'username'
+                    },
+                    {
+                        path: 'replies',
+                        populate: {
+                            path: 'author',
+                            select: 'username'
+                        }
+                    }
+                ]
             });
 
         if (!post) {
-            console.log(`Post with id ${req.params.id} not found`); // Log if post is not found
+            console.log(`Post with id ${req.params.id} not found`);
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
+        console.log(`Post with id ${req.params.id} found:`, post);
 
-        res.json(post);  // Send back the populated post directly!
+        res.json(post);
     } catch (error) {
-        console.error("Error fetching post:", error); // Log any errors
+        console.error("Error fetching post:", error);
         res.status(500).json({ message: error.message });
     }
 });
