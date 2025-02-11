@@ -289,6 +289,7 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
 // Get replies to a comment
 router.get('/comments/:commentId/replies', async (req, res) => {
+    console.log('Fetching replies for comment:', req.params.commentId); // Add this line
     try {
         if (!mongoose.isValidObjectId(req.params.commentId)) {
             return res.status(400).json({ message: 'Invalid comment ID' });
