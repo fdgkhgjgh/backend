@@ -61,32 +61,51 @@ router.get('/', async (req, res) => {
 
 // Get a single post by ID, *including* its comments and replies
 router.get('/:id', async (req, res) => {
-    // Check if the ID is a valid ObjectId
-    if (!mongoose.isValidObjectId(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid post ID' });
+    const { page = 1, limit = 20 } = req.query;  // Get page and limit from query parameters
+    const parsedLimit = parseInt(limit);
+    const parsedPage = parseInt(page);
+
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+        return res.status(400).json({ message: 'Invalid limit value. Must be a positive number.' });
+    }
+    if (isNaN(parsedPage) || parsedPage <= 0) {
+        return res.status(400).json({ message: 'Invalid page value. Must be a positive number.' });
     }
 
     try {
-        const post = await Post.findById(req.params.id)
-            .populate('author', 'username')
-            .populate({
-                path: 'comments',
-                populate: {
-                    path: 'author',
-                    select: 'username'
-                }
-            });
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+        const postId = req.params.id;
+
+        const post = await Post.findById(postId)
+            .populate('author', 'username');
 
         if (!post) {
-            console.log(`Post with id ${req.params.id} not found`); // Log if post is not found
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
+        const totalComments = post.comments.length; // Total comments for pagination
+        const totalPages = Math.ceil(totalComments / parsedLimit);
+        const skip = (parsedPage - 1) * parsedLimit;
 
-        res.json(post);  // Send back the populated post directly!
+        //Now, fetch only the comment IDs for the current page.
+        const commentIds = post.comments.slice(skip, skip + parsedLimit);
+
+        //Populate the comments using the fetched IDs.  This is crucial for pagination.
+        const comments = await Comment.find({ _id: { $in: commentIds } })
+            .populate('author', 'username');
+
+        res.json({
+            post,
+            comments,
+            totalPages,
+            currentPage: parsedPage,
+            totalComments
+        });
+
     } catch (error) {
-        console.error("Error fetching post:", error); // Log any errors
+        console.error("Error fetching post:", error);
         res.status(500).json({ message: error.message });
     }
 });
