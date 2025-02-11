@@ -17,7 +17,7 @@ const corsOptions = {
     credentials: true,
 };
 
-app.use(cors(corsOptions)); // Use the configured options
+//app.use(cors(corsOptions)); // Use the configured options
 // --- END CORS ---
 
 // Middleware
