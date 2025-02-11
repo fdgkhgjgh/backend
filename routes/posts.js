@@ -289,14 +289,17 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
 // Get replies to a comment
 router.get('/comments/:commentId/replies', async (req, res) => {
-    console.log('Fetching replies for comment:', req.params.commentId); // Add this line
+    console.log('Fetching replies for comment:', req.params.commentId);
     try {
+        // Validate commentId
         if (!mongoose.isValidObjectId(req.params.commentId)) {
+            console.log('Invalid comment ID:', req.params.commentId);
             return res.status(400).json({ message: 'Invalid comment ID' });
         }
 
-        const comment = await Comment.findById(req.params.commentId)
+        const comment = await Comment.findById(req.params.commentId);
         if (!comment) {
+            console.log('Comment not found for ID:', req.params.commentId);
             return res.status(404).json({ message: 'Comment not found' });
         }
 
@@ -309,6 +312,7 @@ router.get('/comments/:commentId/replies', async (req, res) => {
             }
         });
 
+        console.log('Fetched replies:', comment.replies);
         res.json(comment.replies);
     } catch (error) {
         console.error("Error fetching replies:", error);
