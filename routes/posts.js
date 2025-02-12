@@ -233,7 +233,10 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
         post.comments.push(newComment._id); //Push comment id.
         await post.save();
 
-       //Populate the author.
+        // Increase notification count for post author
+        await User.findByIdAndUpdate(post.author, { $inc: { notificationCount: 1 } });
+
+        //Populate the author.
         const populatedPost = await Post.findById(req.params.id)
             .populate('author', 'username')
             .populate({
@@ -284,6 +287,10 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         parentComment.replies.push(newComment._id);
         await parentComment.save();
+
+        // Increase notification count for comment author
+        await User.findByIdAndUpdate(parentComment.author, { $inc: { notificationCount: 1 } });
+
        //Populate the author.
         const populatedComment = await Comment.findById(newComment._id)
             .populate('author', 'username')
@@ -382,6 +389,16 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
         res.status(500).json({ message: error.message })
     }
 })
+
+//notification on username
+router.get('/users/notifications', authenticateToken, async (req, res) => {
+    try {
+      const users = await User.find({}, 'username notificationCount').lean();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 
 // Upvote a post
 router.post('/:id/upvote', authenticateToken, async (req, res) => {
