@@ -61,6 +61,7 @@ router.get('/', async (req, res) => {
 
 // Get a single post by ID, *including* its comments and replies
 router.get('/:id', async (req, res) => {
+    // Check if the ID is a valid ObjectId
     if (!mongoose.isValidObjectId(req.params.id)) {
         return res.status(400).json({ message: 'Invalid post ID' });
     }
@@ -70,31 +71,22 @@ router.get('/:id', async (req, res) => {
             .populate('author', 'username')
             .populate({
                 path: 'comments',
-                populate: [
-                    {
-                        path: 'author',
-                        select: 'username'
-                    },
-                    {
-                        path: 'replies',
-                        populate: {
-                            path: 'author',
-                            select: 'username'
-                        }
-                    }
-                ]
+                populate: {
+                    path: 'author',
+                    select: 'username'
+                }
             });
 
         if (!post) {
-            console.log(`Post with id ${req.params.id} not found`);
+            console.log(`Post with id ${req.params.id} not found`); // Log if post is not found
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        console.log(`Post with id ${req.params.id} found:`, post);
+        console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
 
-        res.json(post);
+        res.json(post);  // Send back the populated post directly!
     } catch (error) {
-        console.error("Error fetching post:", error);
+        console.error("Error fetching post:", error); // Log any errors
         res.status(500).json({ message: error.message });
     }
 });
@@ -233,10 +225,7 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
         post.comments.push(newComment._id); //Push comment id.
         await post.save();
 
-        // Increase notification count for post author
-        await User.findByIdAndUpdate(post.author, { $inc: { notificationCount: 1 } });
-
-        //Populate the author.
+       //Populate the author.
         const populatedPost = await Post.findById(req.params.id)
             .populate('author', 'username')
             .populate({
@@ -287,10 +276,6 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         parentComment.replies.push(newComment._id);
         await parentComment.save();
-
-        // Increase notification count for comment author
-        await User.findByIdAndUpdate(parentComment.author, { $inc: { notificationCount: 1 } });
-
        //Populate the author.
         const populatedComment = await Comment.findById(newComment._id)
             .populate('author', 'username')
@@ -389,16 +374,6 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
         res.status(500).json({ message: error.message })
     }
 })
-
-//notification on username
-router.get('/users/notifications', authenticateToken, async (req, res) => {
-    try {
-      const users = await User.find({}, 'username notificationCount').lean();
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  });
 
 // Upvote a post
 router.post('/:id/upvote', authenticateToken, async (req, res) => {

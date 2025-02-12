@@ -21,16 +21,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// New method to update notification count
-userSchema.methods.updateNotificationCount = async function() {
-  // Count posts with at least one comment
-  const postsWithResponses = await mongoose.model('Post').countDocuments({ author: this._id, comments: { $exists: true, $ne: [] } });
-  // Count comments with at least one reply
-  const commentsWithReplies = await mongoose.model('Comment').countDocuments({ author: this._id, replies: { $exists: true, $ne: [] } });
-  // Update notificationCount
-  this.notificationCount = postsWithResponses + commentsWithReplies;
-  await this.save();
-};
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
