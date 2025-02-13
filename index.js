@@ -36,27 +36,6 @@ const postRoutes = require('./routes/posts');
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 
-// --- WebSockets Setup ---
-const http = require('http');
-const { Server } = require('socket.io');
-
-const server = http.createServer(app); // ✅ Now app is already defined!
-const io = new Server(server, { cors: { origin: '*' } });
-
-io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-    
-    socket.on('join', (userId) => {
-        socket.join(userId); // Each user joins their own room
-    });
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-    });
-});
-
-// Store socket.io instance in app
-app.set('socketio', io);
 
 // Error Handling (basic)
 app.use((err, req, res, next) => {
@@ -65,6 +44,6 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-server.listen(PORT, () => { // ✅ Use `server.listen` instead of `app.listen`
+app.listen(PORT, () => { // ✅ Use `server.listen` instead of `app.listen`
     console.log(`Server is running on port ${PORT}`);
 });
