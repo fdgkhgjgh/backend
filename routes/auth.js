@@ -90,7 +90,7 @@ router.post('/login', async (req, res) => {
             path: 'replies',
             populate: {
                 path: 'author',
-                select: 'username' // Select only the username of the reply author
+                select: 'username'
             }
         });
 
@@ -99,9 +99,9 @@ router.post('/login', async (req, res) => {
             comment.replies.some(reply => reply.author._id.toString() !== userId)
         );
 
-        // Map the new responses to include relevant information for REPLIES
+        // Map the new responses to include relevant information
         const replyNotifications = newResponses.map(comment => ({
-            type: 'reply', // **CRITICAL: Add the type**
+            type: 'reply',
             postId: comment.post, // Reference to the post
             commentId: comment._id, // Reference to the comment
             commentText: comment.text, // Comment text
@@ -118,19 +118,12 @@ router.post('/login', async (req, res) => {
           }
         });
 
-        const newPostComments = await Promise.all(userPosts.map(async post => {
-          await post.populate({
-            path: 'comments',
-            populate: {
-              path: 'author',
-              select: 'username'
-            }
-          });
-          return post;
-        }));
+        const newPostComments = userPosts.filter(post =>
+          post.comments.some(comment => comment.author._id.toString() !== userId)
+        );
 
         const commentNotifications = newPostComments.map(post => ({
-            type: 'comment', // **CRITICAL: Add the type**
+            type: 'comment',
             postId: post._id,
             postTitle: post.title,
             commentAuthor: post.comments.find(comment => comment.author._id.toString() !== userId).author.username,
@@ -149,6 +142,7 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
     }
 });
+
 
 
 // Reset unread notifications count (when user clicks profile)
