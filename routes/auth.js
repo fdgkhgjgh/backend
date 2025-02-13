@@ -123,15 +123,16 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
   try {
       const userId = req.user.userId;
       // Find all comments by the user
-      const userComments = await Comment.find({ author: userId });
+      const userComments = await Comment.find({ author: userId }).populate('replies');
 
       // For each comment, go through all replies and if the current user hasn't read it
       for (let comment of userComments) {
-          for (let reply of comment.replies) {
-              // Update the reply's readBy array if it doesn't contain the user
-              if (!reply.readBy.includes(userId)) {
-                  reply.readBy.push(userId);
-                  await reply.save();
+          if (comment.replies && Array.isArray(comment.replies)) { // Add check here
+              for (let reply of comment.replies) {
+                  if (reply.readBy && !reply.readBy.includes(userId)) {
+                      reply.readBy.push(userId);
+                      await reply.save();
+                  }
               }
           }
       }

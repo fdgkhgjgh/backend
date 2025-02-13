@@ -7,7 +7,8 @@ const commentSchema = new mongoose.Schema({
     imageUrl: { type: String },
     post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true }, // Add post reference
     parentComment: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null }, //For replies
-    replies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }] // Add this line
+    replies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }], // Add this line
+    readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' , default: []}] // Add this line
 }, { timestamps: true });
 
 const Comment = mongoose.model('Comment', commentSchema);
