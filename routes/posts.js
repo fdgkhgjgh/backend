@@ -199,7 +199,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 
 // Add a comment to a post (protected route)
-router.post('/:id/comments', authenticateToken, upload.single('image'), async (req, res) => { // Add upload middleware
+router.post('/:id/comments', authenticateToken, upload.single('image'), async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
@@ -224,7 +224,12 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
 
         post.comments.push(newComment._id); //Push comment id.
         await post.save();
-        await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
+        
+        // Check if the commenter is not the same as the post author
+        if (post.author.toString() !== req.user.userId) {
+            await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
+        }
+
 
        //Populate the author.
         const populatedPost = await Post.findById(req.params.id)
