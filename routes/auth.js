@@ -118,11 +118,17 @@ router.post('/login', async (req, res) => {
           }
         });
 
-        const newPostComments = userPosts.filter(post =>
-          post.comments.some(comment => comment.author._id.toString() !== userId)
-        );
+        const newPostComments = await Promise.all(userPosts.map(async post => {
+          await post.populate({
+            path: 'comments',
+            populate: {
+              path: 'author',
+              select: 'username'
+            }
+          });
+          return post;
+        }));
 
-        // Map the new post comments to include relevant information for COMMENTS ON POSTS
         const commentNotifications = newPostComments.map(post => ({
             type: 'comment', // **CRITICAL: Add the type**
             postId: post._id,
