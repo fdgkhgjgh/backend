@@ -76,6 +76,18 @@ router.post('/login', async (req, res) => {
       // On the client-side, remove the JWT from local storage or cookies.  There's no server-side session to invalidate with JWT.
       res.status(200).json({ message: 'Logout successful' });
   });
+
+  // Get unread notifications count
+router.get('/notifications', authenticateToken, async (req, res) => {
+  const user = await User.findById(req.user.userId);
+  res.json({ unreadNotifications: user.unreadNotifications });
+});
+
+// Reset unread notifications count (when user clicks profile)
+router.post('/reset-notifications', authenticateToken, async (req, res) => {
+  await User.findByIdAndUpdate(req.user.userId, { unreadNotifications: 0 });
+  res.json({ message: 'Notifications cleared' });
+});
   
   
   module.exports = router;

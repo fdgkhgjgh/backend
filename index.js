@@ -1,4 +1,27 @@
 // backend/index.js
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+  
+  socket.on('join', (userId) => {
+    socket.join(userId); // Each user joins their own room
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+app.set('socketio', io);
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');

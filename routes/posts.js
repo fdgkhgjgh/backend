@@ -224,6 +224,9 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
 
         post.comments.push(newComment._id); //Push comment id.
         await post.save();
+        await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
+        const io = req.app.get('socketio');
+io.to(post.author._id.toString()).emit('newNotification', { message: '新评论回应您!' });
 
        //Populate the author.
         const populatedPost = await Post.findById(req.params.id)
@@ -276,6 +279,9 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         parentComment.replies.push(newComment._id);
         await parentComment.save();
+        await User.findByIdAndUpdate(parentComment.author._id, { $inc: { unreadNotifications: 1 } });
+        const io = req.app.get('socketio');
+io.to(post.author._id.toString()).emit('newNotification', { message: '新回复回应您!' });
        //Populate the author.
         const populatedComment = await Comment.findById(newComment._id)
             .populate('author', 'username')
