@@ -4,6 +4,7 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const authenticateToken = require('../middleware/auth'); // ✅ Import authentication middleware
 
 // Register route
 router.post('/register', async (req, res) => {
