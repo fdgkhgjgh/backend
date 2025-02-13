@@ -90,7 +90,7 @@ router.post('/login', async (req, res) => {
             path: 'replies',
             populate: {
                 path: 'author',
-                select: 'username'
+                select: 'username' // Select only the username of the reply author
             }
         });
 
@@ -99,9 +99,9 @@ router.post('/login', async (req, res) => {
             comment.replies.some(reply => reply.author._id.toString() !== userId)
         );
 
-        // Map the new responses to include relevant information
+        // Map the new responses to include relevant information for REPLIES
         const replyNotifications = newResponses.map(comment => ({
-            type: 'reply',
+            type: 'reply', // **CRITICAL: Add the type**
             postId: comment.post, // Reference to the post
             commentId: comment._id, // Reference to the comment
             commentText: comment.text, // Comment text
@@ -122,8 +122,9 @@ router.post('/login', async (req, res) => {
           post.comments.some(comment => comment.author._id.toString() !== userId)
         );
 
+        // Map the new post comments to include relevant information for COMMENTS ON POSTS
         const commentNotifications = newPostComments.map(post => ({
-            type: 'comment',
+            type: 'comment', // **CRITICAL: Add the type**
             postId: post._id,
             postTitle: post.title,
             commentAuthor: post.comments.find(comment => comment.author._id.toString() !== userId).author.username,
