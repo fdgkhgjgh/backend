@@ -155,7 +155,7 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
 
       // For each comment, go through all replies and if the current user hasn't read it
       for (let comment of userComments) {
-          if (comment.replies && Array.isArray(comment.replies)) { // Add check here
+          if (comment.replies && Array.isArray(comment.replies)) {
               for (let reply of comment.replies) {
                   if (reply.readBy && !reply.readBy.includes(userId)) {
                       reply.readBy.push(userId);
@@ -164,6 +164,9 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
               }
           }
       }
+
+      // Reset the user's unread notifications count
+      await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
 
       res.json({ message: 'Notifications cleared' });
   } catch (error) {
