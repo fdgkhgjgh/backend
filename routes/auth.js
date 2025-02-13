@@ -5,6 +5,8 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const authenticateToken = require('../middleware/auth'); // ✅ Import authentication middleware
+const Post = require('../models/Post'); // Import the Post model
+const Comment = require('../models/Comment'); // Import the Comment model
 
 // Register route
 router.post('/register', async (req, res) => {
