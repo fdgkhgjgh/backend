@@ -1,34 +1,12 @@
-// backend/index.js
-const http = require('http');
-const { Server } = require('socket.io');
-
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
-
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-  
-  socket.on('join', (userId) => {
-    socket.join(userId); // Each user joins their own room
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
-
-app.set('socketio', io);
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
+// Load environment variables
 require('dotenv').config();
+
+// Import necessary modules
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
-const postRoutes = require('./routes/posts');
 
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -40,20 +18,45 @@ const corsOptions = {
     credentials: true,
 };
 
-app.use(cors(corsOptions)); // Use the configured options
-// --- END CORS ---
+app.use(cors(corsOptions)); // Use the configured CORS options
 
 // Middleware
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Database connection (using config/db.js - see next)
+// Database connection
 const db = require('./config/db');
 db.connect();
 
-// Routes
+// Import routes
+const authRoutes = require('./routes/auth');
+const postRoutes = require('./routes/posts');
+
+// Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
+
+// --- WebSockets Setup ---
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app); // ✅ Now app is already defined!
+const io = new Server(server, { cors: { origin: '*' } });
+
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+    
+    socket.on('join', (userId) => {
+        socket.join(userId); // Each user joins their own room
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
+});
+
+// Store socket.io instance in app
+app.set('socketio', io);
 
 // Error Handling (basic)
 app.use((err, req, res, next) => {
@@ -62,6 +65,6 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+server.listen(PORT, () => { // ✅ Use `server.listen` instead of `app.listen`
     console.log(`Server is running on port ${PORT}`);
 });
