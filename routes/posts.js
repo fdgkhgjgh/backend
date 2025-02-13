@@ -277,8 +277,22 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         parentComment.replies.push(newComment._id);
         await parentComment.save();
-        await User.findByIdAndUpdate(parentComment.author._id, { $inc: { unreadNotifications: 1 } });
-       //Populate the author.
+
+        // Increment notifications for both comment author AND post author
+        // 1. Increment for comment author (original code)
+        if (parentComment.author.toString() !== req.user.userId) {  // Make sure not to notify the user replying to themselves
+            await User.findByIdAndUpdate(parentComment.author._id, { $inc: { unreadNotifications: 1 } });
+        }
+
+        // 2. Increment for post author (new code)
+        if (post.author.toString() !== req.user.userId && post.author.toString() !== parentComment.author.toString()) {
+             // Make sure not to notify if:
+             // - User is replying to their own post OR
+             // - User is replying to their own comment on their own post
+            await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
+        }
+
+        // Populate the author.
         const populatedComment = await Comment.findById(newComment._id)
             .populate('author', 'username')
 
