@@ -78,16 +78,67 @@ router.post('/login', async (req, res) => {
       res.status(200).json({ message: 'Logout successful' });
   });
 
-  // Get unread notifications count
+  // Get unread notifications with details
 router.get('/notifications', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user.userId);
-  res.json({ unreadNotifications: user.unreadNotifications });
+  try {
+      const userId = req.user.userId;
+
+      // Find all comments where the user is the author
+      const userComments = await Comment.find({ author: userId }).populate({
+          path: 'replies',
+          populate: {
+              path: 'author',
+              select: 'username' // Select only the username of the reply author
+          }
+      });
+
+      // Filter out comments that have unread replies
+      const newResponses = userComments.filter(comment =>
+          comment.replies.some(reply => reply.author._id.toString() !== userId)
+      );
+
+      // Map the new responses to include relevant information
+      const notifications = newResponses.map(comment => ({
+          postId: comment.post, // Reference to the post
+          commentId: comment._id, // Reference to the comment
+          commentText: comment.text, // Comment text
+          replyAuthor: comment.replies.find(reply => reply.author._id.toString() !== userId).author.username, // Username of the first reply author
+          replyText: comment.replies.find(reply => reply.author._id.toString() !== userId).text // The text of the first reply author
+      }));
+
+      // Get total unread notifications count
+      const unreadNotifications = notifications.length
+
+      res.json({ unreadNotifications, notifications });
+  } catch (error) {
+      console.error("Error fetching notifications with details:", error);
+      res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
+  }
 });
 
 // Reset unread notifications count (when user clicks profile)
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
-  await User.findByIdAndUpdate(req.user.userId, { unreadNotifications: 0 });
-  res.json({ message: 'Notifications cleared' });
+  try {
+      const userId = req.user.userId;
+      // Find all comments by the user
+      const userComments = await Comment.find({ author: userId });
+
+      // For each comment, go through all replies and if the current user hasn't read it
+      for (let comment of userComments) {
+          for (let reply of comment.replies) {
+              // Update the reply's readBy array if it doesn't contain the user
+              if (!reply.readBy.includes(userId)) {
+                  reply.readBy.push(userId);
+                  await reply.save();
+              }
+          }
+      }
+
+      res.json({ message: 'Notifications cleared' });
+  } catch (error) {
+      console.error("Error resetting notifications:", error);
+      res.status(500).json({ message: "Failed to reset notifications", error: error.message });
+  }
 });
   
   
