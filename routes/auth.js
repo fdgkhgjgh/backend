@@ -85,42 +85,55 @@ router.post('/login', async (req, res) => {
   try {
       const userId = req.user.userId;
 
-      // ... (previous code for fetching userComments)
-
-      const replyNotifications = newResponses.map(comment => {
-          const unreadReply = comment.replies.find(reply => !reply.readBy.includes(userId));
-          if (unreadReply) {
-              return {
-                  type: 'reply',
-                  postId: comment.post, 
-                  commentId: comment._id,
-                  commentText: comment.text,
-                  replyAuthor: unreadReply.author.username,
-                  replyText: unreadReply.text
-              };
+      // 1. Find all comments where the user is the author
+      const userComments = await Comment.find({ author: userId }).populate({
+          path: 'replies',
+          populate: {
+              path: 'author',
+              select: 'username'
           }
-          return null;
-      }).filter(Boolean);
+      });
 
-      // ... (previous code for fetching userPosts)
+      // Filter out comments that have unread replies
+      const newResponses = userComments.filter(comment =>
+          comment.replies.some(reply => !reply.readBy.includes(userId))
+      );
 
-      const commentNotifications = newPostComments.map(post => {
-          const newComment = post.comments.find(comment => comment.author._id.toString() !== userId);
-          if (newComment) {
-              return {
-                  type: 'comment',
-                  postId: post._id,
-                  postTitle: post.title,
-                  commentAuthor: newComment.author.username,
-                  commentText: newComment.text
-              };
+      // Map the new responses to include relevant information
+      const replyNotifications = newResponses.map(comment => ({
+          type: 'reply',
+          postId: comment.post, 
+          commentId: comment._id,
+          commentText: comment.text,
+          replyAuthor: comment.replies.find(reply => !reply.readBy.includes(userId)).author.username,
+          replyText: comment.replies.find(reply => !reply.readBy.includes(userId)).text
+      }));
+
+      // 2. Find all posts where the user is the author and find new comments on those posts
+      const userPosts = await Post.find({ author: userId }).populate({
+          path: 'comments',
+          populate: {
+              path: 'author',
+              select: 'username'
           }
-          return null;
-      }).filter(Boolean);
+      });
 
+      const newPostComments = userPosts.filter(post =>
+          post.comments.some(comment => comment.author._id.toString() !== userId)
+      );
+
+      const commentNotifications = newPostComments.map(post => ({
+          type: 'comment',
+          postId: post._id,
+          postTitle: post.title,
+          commentAuthor: post.comments.find(comment => comment.author._id.toString() !== userId).author.username,
+          commentText: post.comments.find(comment => comment.author._id.toString() !== userId).text
+      }));
+
+      // Combine the notifications
       const notifications = [...replyNotifications, ...commentNotifications];
 
-      // If you start tracking read status for comments, adjust this count
+      // Get total unread notifications count
       const unreadNotifications = notifications.length;
 
       res.json({ unreadNotifications, notifications });
