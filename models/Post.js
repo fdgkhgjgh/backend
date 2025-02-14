@@ -2,8 +2,16 @@
 const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    content: { type: String, required: true },
+    title: {
+         type: String,
+         required: true,
+         maxlength: 20 // Add the maxlength validator
+     },
+    content: {
+         type: String,
+         required: true,
+         maxlength: 1000 // Add the maxlength validator
+     },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     imageUrls: [{ type: String }],
     videoUrls: [{ type: String }],

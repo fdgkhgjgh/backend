@@ -464,3 +464,26 @@ router.post('/:id/downvote', authenticateToken, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+// Helper function to truncate content and title
+function truncateContent(content, title) {
+    const maxContentLength = 1000;
+    const firstLineMaxLength = 15;
+    const maxTitleLength = 20;  // Added title length restriction
+
+    // Truncate title
+    const truncatedTitle = title.length > maxTitleLength ? title.substring(0, maxTitleLength) + '...' : title;
+
+    // Truncate content
+    const lines = content.split('\n');
+    const firstLine = lines[0] || '';  // Ensure first line exists
+    const truncatedFirstLine = firstLine.substring(0, firstLineMaxLength);
+    const remainingContent = content.substring(truncatedFirstLine.length);
+    const truncatedContent = truncatedFirstLine + remainingContent.substring(0, maxContentLength - truncatedFirstLine.length);
+    const finalContent = truncatedContent.length < content.length ? truncatedContent + '...' : truncatedContent;
+
+    return {
+        truncatedTitle: truncatedTitle,
+        truncatedContent: finalContent
+    };
+}
