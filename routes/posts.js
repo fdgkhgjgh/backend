@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
     try {
         const skip = (parsedPage - 1) * parsedLimit; // Calculate how many posts to skip
         const posts = await Post.find()
-            .sort({ createdAt: -1 })
+            .sort({ pinned: -1, lastActivity: -1 })
             .populate('author', 'username')
             .skip(skip)
             .limit(parsedLimit);
@@ -224,6 +224,10 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
 
         post.comments.push(newComment._id); //Push comment id.
         await post.save();
+
+        // ***UPDATE LAST ACTIVITY HERE***
+        post.lastActivity = Date.now();
+        await post.save();
         
         // Check if the commenter is not the same as the post author
         if (post.author.toString() !== req.user.userId) {
@@ -282,6 +286,10 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         parentComment.replies.push(newComment._id);
         await parentComment.save();
+
+        // ***UPDATE LAST ACTIVITY HERE***
+        post.lastActivity = Date.now();
+        await post.save();
 
         // Increment notifications for both comment author AND post author
         // 1. Increment for comment author (original code)
@@ -487,3 +495,30 @@ function truncateContent(content, title) {
         truncatedContent: finalContent
     };
 }
+
+// Pin/Unpin a post (protected route - and check ownership)
+router.post('/:id/pin', authenticateToken, async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Check user ownership
+        if (post.author.toString() !== req.user.userId) {
+            return res.status(403).json({ message: "You are not authorized to pin/unpin this post." });
+        }
+
+        post.pinned = !post.pinned;  // Toggle the pinned status
+        await post.save();
+
+        res.json({ message: `Post ${post.pinned ? 'pinned' : 'unpinned'} successfully`, pinned: post.pinned });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
