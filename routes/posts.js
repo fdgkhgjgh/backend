@@ -489,8 +489,8 @@ router.post('/:id/downvote', authenticateToken, async (req, res) => {
 // Helper function to truncate content and title
 function truncateContent(content, title) {
     const maxContentLength = 1000;
-    const firstLineMaxLength = 50;
-    const maxTitleLength = 50;  // Added title length restriction
+    const firstLineMaxLength = 45;
+    const maxTitleLength = 45;  // Added title length restriction
 
     // Truncate title
     const truncatedTitle = title.length > maxTitleLength ? title.substring(0, maxTitleLength) + '...' : title;
