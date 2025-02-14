@@ -199,7 +199,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 
 // Add a comment to a post (protected route)
-router.post('/:id/comments', authenticateToken, upload.single('image'), async (req, res) => {
+router.post('/:id/comments', authenticateToken, upload.single('file'), async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
@@ -214,16 +214,29 @@ router.post('/:id/comments', authenticateToken, upload.single('image'), async (r
             return res.status(400).json({ message: 'Comment text is required' });
         }
 
+        let imageUrl = undefined;
+        let videoUrl = undefined;
+
+        if (req.file) {
+            if (req.file.mimetype.startsWith('image/')) {
+                imageUrl = req.file.path;
+            } else if (req.file.mimetype.startsWith('video/')) {
+                videoUrl = req.file.path;
+            } else {
+                return res.status(400).json({ message: 'Invalid file type. Only images and videos are allowed.' });
+            }
+        }
+
         const newComment = new Comment({
             author: req.user.userId,
             text: text,
-            imageUrl: req.file ? req.file.path : undefined, // Store Cloudinary URL
+            imageUrl: imageUrl, // Store Cloudinary URL (if it's an image)
+            videoUrl: videoUrl, // Store Cloudinary URL (if it's a video)
             post: req.params.id  //Add post id,VERY IMPORTANT
         });
         await newComment.save(); //Save it before you push it.
 
         post.comments.push(newComment._id); //Push comment id.
-        await post.save();
 
         // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
@@ -513,8 +526,28 @@ router.post('/:id/pin', authenticateToken, async (req, res) => {
             return res.status(403).json({ message: "You are not authorized to pin/unpin this post." });
         }
 
-        post.pinned = !post.pinned;  // Toggle the pinned status
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const MAX_PINNED_POSTS = 1; // Define the maximum number of pinned posts
+
+        if (!post.pinned) { // Trying to PIN
+            if (user.pinnedPosts.length >= MAX_PINNED_POSTS) {
+                return res.status(400).json({ message: `You can only pin a maximum of ${MAX_PINNED_POSTS} posts.` });
+            }
+
+            post.pinned = true;
+            user.pinnedPosts.push(post._id); // Add to pinnedPosts array
+
+        } else { // Trying to UNPIN
+            post.pinned = false;
+            user.pinnedPosts.pull(post._id);  // Remove from pinnedPosts array
+        }
+
         await post.save();
+        await user.save();
 
         res.json({ message: `Post ${post.pinned ? 'pinned' : 'unpinned'} successfully`, pinned: post.pinned });
 

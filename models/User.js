@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   // Add other fields as needed (e.g., email, profile picture URL)
   unreadNotifications: { type: Number, default: 0 }, // New field for unread responses
+  pinnedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }] // New field!
 }, { timestamps: true });
 
 // Hash password before saving
