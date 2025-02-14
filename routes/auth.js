@@ -8,32 +8,56 @@ const authenticateToken = require('../middleware/auth'); // ✅ Import authentic
 const Post = require('../models/Post'); // Import the Post model
 const Comment = require('../models/Comment'); // Import the Comment model
 
-// Register route
-router.post('/register', async (req, res) => {
-  try {
-    const { username, password } = req.body;
+// Middleware to limit registration attempts per IP address
+const registrationLimiter = (req, res, next) => {
+    const ip = req.headers['cf-connecting-ip'] || req.ip; // Get IP from Cloudflare or fallback
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000; // One day in milliseconds
 
-    // Basic validation
-    if (!username || !password) {
-      return res.status(400).json({ message: 'Username and password are required' });
+    // Initialize IP if not present
+    if (!registrationAttempts[ip]) {
+        registrationAttempts[ip] = [];
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(409).json({ message: 'Username already exists' });
+    // Clean up old attempts (older than one day)
+    registrationAttempts[ip] = registrationAttempts[ip].filter(time => now - time < oneDay);
+
+    if (registrationAttempts[ip].length >= 5) {
+        console.warn(`Registration limit exceeded for IP: ${ip}`);
+        return res.status(429).json({ message: 'Too many accounts created from this IP address today. Please try again tomorrow.' });
     }
 
-    // Create new user (password hashing happens in the User model's pre-save hook)
-    const newUser = new User({ username, password });
-    await newUser.save();
+    // Add the current attempt
+    registrationAttempts[ip].push(now);
+    next(); // Proceed to the registration route
+};
 
-    res.status(201).json({ message: 'User registered successfully' });
+// Register route (modified)
+router.post('/register', registrationLimiter, async (req, res) => {
+    try {
+        const { username, password } = req.body;
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Registration failed', error: error.message });
-  }
+        // Basic validation
+        if (!username || !password) {
+            return res.status(400).json({ message: 'Username and password are required' });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(409).json({ message: 'Username already exists' });
+        }
+
+        // Create new user (password hashing happens in the User model's pre-save hook)
+        const newUser = new User({ username, password });
+        await newUser.save();
+
+        res.status(201).json({ message: 'User registered successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Registration failed', error: error.message });
+    }
 });
 
 // Login route
