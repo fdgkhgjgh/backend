@@ -8,6 +8,9 @@ const authenticateToken = require('../middleware/auth'); // ✅ Import authentic
 const Post = require('../models/Post'); // Import the Post model
 const Comment = require('../models/Comment'); // Import the Comment model
 
+// In-memory store for registration attempts (consider Redis for production)
+const registrationAttempts = {};  // <--- DECLARE IT HERE, BEFORE THE MIDDLEWARE!
+
 // Middleware to limit registration attempts per IP address
 const registrationLimiter = (req, res, next) => {
     const ip = req.headers['cf-connecting-ip'] || req.ip; // Get IP from Cloudflare or fallback
