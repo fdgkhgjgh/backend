@@ -207,31 +207,35 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
 //profile pic upload
 router.post('/profile/update', authenticateToken, upload.single('profilePicture'), async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.userId; // Get user ID from the JWT
 
+        // Find the user
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // Handle profile picture upload
         if (req.file) {
             try {
-                // ***USE req.file.filename or another property from req.file HERE***
                 // Upload the new image to Cloudinary
-                const result = await cloudinary.uploader.upload(req.file.filename); // See notes on using filename
+                const result = await cloudinary.uploader.upload(req.file.path);
                 const newProfilePictureUrl = result.secure_url;
 
+                // Delete the old image from Cloudinary (optional - see note below)
                 if (user.profilePictureUrl) {
-                    const publicId = user.profilePictureUrl.split('/').pop().split('.')[0];
+                    // Extract the public ID from the URL
+                    const publicId = user.profilePictureUrl.split('/').pop().split('.')[0]; // This might need adjustment
                     try {
-                        await cloudinary.uploader.destroy(publicId);
+                        await cloudinary.uploader.destroy(publicId);  // Delete from cloudinary
                     } catch (deleteError) {
-                        console.warn('Error deleting old profile picture from Cloudinary:', deleteError);
+                         console.warn('Error deleting old profile picture from Cloudinary:', deleteError);
+                         // DON'T throw an error here. Log it and continue.
                     }
                 }
 
+                // Update the user's profilePictureUrl
                 user.profilePictureUrl = newProfilePictureUrl;
-
             } catch (uploadError) {
                 console.error("Cloudinary upload error:", uploadError);
                 return res.status(500).json({ message: 'Profile picture upload failed', error: uploadError.message });
@@ -240,7 +244,7 @@ router.post('/profile/update', authenticateToken, upload.single('profilePicture'
 
         await user.save();
 
-        res.json({ message: 'Profile updated successfully', profilePictureUrl: user.profilePictureUrl });
+        res.json({ message: 'Profile updated successfully', profilePictureUrl: user.profilePictureUrl }); // Send back the new URL
     } catch (error) {
         console.error('Error updating profile:', error);
         res.status(500).json({ message: 'Failed to update profile', error: error.message });
