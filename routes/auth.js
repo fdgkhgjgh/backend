@@ -201,6 +201,68 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
       res.status(500).json({ message: "Failed to reset notifications", error: error.message });
   }
 });
+
+//profile pic upload
+router.post('/profile/update', authenticateToken, upload.single('profilePicture'), async (req, res) => {
+    try {
+        const userId = req.user.userId; // Get user ID from the JWT
+
+        // Find the user
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Handle profile picture upload
+        if (req.file) {
+            try {
+                // Upload the new image to Cloudinary
+                const result = await cloudinary.uploader.upload(req.file.path);
+                const newProfilePictureUrl = result.secure_url;
+
+                // Delete the old image from Cloudinary (optional - see note below)
+                if (user.profilePictureUrl) {
+                    // Extract the public ID from the URL
+                    const publicId = user.profilePictureUrl.split('/').pop().split('.')[0]; // This might need adjustment
+                    try {
+                        await cloudinary.uploader.destroy(publicId);  // Delete from cloudinary
+                    } catch (deleteError) {
+                         console.warn('Error deleting old profile picture from Cloudinary:', deleteError);
+                         // DON'T throw an error here. Log it and continue.
+                    }
+                }
+
+                // Update the user's profilePictureUrl
+                user.profilePictureUrl = newProfilePictureUrl;
+            } catch (uploadError) {
+                console.error("Cloudinary upload error:", uploadError);
+                return res.status(500).json({ message: 'Profile picture upload failed', error: uploadError.message });
+            }
+        }
+
+        await user.save();
+
+        res.json({ message: 'Profile updated successfully', profilePictureUrl: user.profilePictureUrl }); // Send back the new URL
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: 'Failed to update profile', error: error.message });
+    }
+});
+
+//porfile pic fetch
+router.get('/profile/:userId', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const user = await User.findById(userId).select('username profilePictureUrl'); // Only return username and profilePictureUrl
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ message: 'Failed to fetch user profile', error: error.message });
+    }
+});
   
   
   module.exports = router;
