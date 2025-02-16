@@ -179,30 +179,41 @@ router.post('/login', async (req, res) => {
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
+        
+        console.log(`Resetting notifications for user: ${userId}`);
+
         // Find all comments by the user
         const userComments = await Comment.find({ author: userId }).populate('replies');
-  
-        // For each comment, go through all replies and if the current user hasn't read it
+
+        // For each comment, go through all replies and mark unread replies as read by the user
         for (let comment of userComments) {
             if (comment.replies && Array.isArray(comment.replies)) {
                 for (let reply of comment.replies) {
-                    if (reply.readBy && !reply.readBy.includes(userId)) {
+                    // Check if the reply has not been read by the user
+                    if (!reply.readBy.includes(userId)) {
                         reply.readBy.push(userId);
                         await reply.save();
+                        console.log(`Marked reply ${reply._id} as read by user ${userId}`);
                     }
                 }
             }
         }
-  
+
         // Reset the user's unread notifications count
-        await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
-  
-        res.json({ message: 'Notifications cleared' });
+        const updatedUser = await User.findByIdAndUpdate(
+            userId, 
+            { $set: { unreadNotifications: 0 } },
+            { new: true }
+        );
+
+        console.log(`User's unread notifications set to: ${updatedUser.unreadNotifications}`);
+
+        res.json({ message: 'Notifications cleared', notificationsCount: updatedUser.unreadNotifications });
     } catch (error) {
         console.error("Error resetting notifications:", error);
         res.status(500).json({ message: "Failed to reset notifications", error: error.message });
     }
-  });
+});
 
 //profile pic upload
 router.post('/profile/update', authenticateToken, upload.single('profilePicture'), async (req, res) => {
