@@ -179,30 +179,58 @@ router.post('/login', async (req, res) => {
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
-        // Find all comments by the user
+        console.log(`Resetting notifications for user: ${userId}`); // Log the user ID
+
+        let notificationsUpdated = false; // Flag to track if any notifications were updated
+
+        // 1. Mark replies as read
         const userComments = await Comment.find({ author: userId }).populate('replies');
-  
-        // For each comment, go through all replies and if the current user hasn't read it
+        console.log(`Found ${userComments.length} comments by the user`);
+
         for (let comment of userComments) {
             if (comment.replies && Array.isArray(comment.replies)) {
                 for (let reply of comment.replies) {
                     if (reply.readBy && !reply.readBy.includes(userId)) {
+                        console.log(`Marking reply ${reply._id} as read for user ${userId}`);
                         reply.readBy.push(userId);
                         await reply.save();
+                        notificationsUpdated = true;
                     }
                 }
             }
         }
-  
-        // Reset the user's unread notifications count
-        await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
-  
+
+        // 2.  Mark comments on user's posts as read (if you want to include this logic)
+        const userPosts = await Post.find({ author: userId }).populate('comments');
+
+        for (let post of userPosts) {
+            if (post.comments && Array.isArray(post.comments)) {
+                for (let comment of post.comments) {
+                    if (comment.author.toString() !== userId && !comment.readBy.includes(userId)) {
+                        console.log(`Marking comment ${comment._id} on post ${post._id} as read for user ${userId}`);
+                        comment.readBy.push(userId);
+                        await comment.save();
+                        notificationsUpdated = true;
+                    }
+                }
+            }
+        }
+
+        // Reset the user's unread notifications count ONLY if notifications were updated
+        if (notificationsUpdated) {
+            console.log("Notifications were updated, resetting user unreadNotifications");
+            await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
+        } else {
+            console.log("No notifications were updated.");
+        }
+        console.log("Notifications cleared successfully.");
+
         res.json({ message: 'Notifications cleared' });
     } catch (error) {
         console.error("Error resetting notifications:", error);
         res.status(500).json({ message: "Failed to reset notifications", error: error.message });
     }
-  });
+});
 
 //profile pic upload
 router.post('/profile/update', authenticateToken, upload.single('profilePicture'), async (req, res) => {
