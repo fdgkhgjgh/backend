@@ -111,98 +111,98 @@ router.post('/login', async (req, res) => {
 
  // backend/routes/auth.js - In the notifications route
  router.get('/notifications', authenticateToken, async (req, res) => {
-  try {
-      const userId = req.user.userId;
-
-      // 1. Find all comments where the user is the author
-      const userComments = await Comment.find({ author: userId }).populate({
-          path: 'replies',
-          populate: {
-              path: 'author',
-              select: 'username'
-          }
-      });
-
-      // Filter out comments that have unread replies
-      const newResponses = userComments.filter(comment =>
-          comment.replies.some(reply => !reply.readBy.includes(userId))
-      );
-
-      // Map the new responses to include relevant information
-      const replyNotifications = newResponses.map(comment => ({
-          type: 'reply',
-          postId: comment.post, 
-          commentId: comment._id,
-          commentText: comment.text,
-          replyAuthor: comment.replies.find(reply => !reply.readBy.includes(userId)).author.username,
-          replyText: comment.replies.find(reply => !reply.readBy.includes(userId)).text
-      }));
-
-      // 2. Find all posts where the user is the author and find new comments on those posts
-      const userPosts = await Post.find({ author: userId }).populate({
-          path: 'comments',
-          populate: {
-              path: 'author',
-              select: 'username'
-          }
-      });
-
-      const newPostComments = userPosts.filter(post =>
-          post.comments.some(comment => comment.author._id.toString() !== userId)
-      );
-
-      const commentNotifications = newPostComments.map(post => ({
-          type: 'comment',
-          postId: post._id,
-          postTitle: post.title,
-          commentAuthor: post.comments.find(comment => comment.author._id.toString() !== userId).author.username,
-          commentText: post.comments.find(comment => comment.author._id.toString() !== userId).text
-      }));
-
-      // Combine the notifications
-      const notifications = [...replyNotifications, ...commentNotifications];
-
-      // Get total unread notifications count
-      const unreadNotifications = notifications.length;
-
-      res.json({ unreadNotifications, notifications });
-  } catch (error) {
-      console.error("Error fetching notifications with details:", error);
-      res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
-  }
-});
+    try {
+        const userId = req.user.userId;
+  
+        // 1. Find all comments where the user is the author
+        const userComments = await Comment.find({ author: userId }).populate({
+            path: 'replies',
+            populate: {
+                path: 'author',
+                select: 'username'
+            }
+        });
+  
+        // Filter out comments that have unread replies
+        const newResponses = userComments.filter(comment =>
+            comment.replies.some(reply => !reply.readBy.includes(userId))
+        );
+  
+        // Map the new responses to include relevant information
+        const replyNotifications = newResponses.map(comment => ({
+            type: 'reply',
+            postId: comment.post, 
+            commentId: comment._id,
+            commentText: comment.text,
+            replyAuthor: comment.replies.find(reply => !reply.readBy.includes(userId)).author.username,
+            replyText: comment.replies.find(reply => !reply.readBy.includes(userId)).text
+        }));
+  
+        // 2. Find all posts where the user is the author and find new comments on those posts
+        const userPosts = await Post.find({ author: userId }).populate({
+            path: 'comments',
+            populate: {
+                path: 'author',
+                select: 'username'
+            }
+        });
+  
+        const newPostComments = userPosts.filter(post =>
+            post.comments.some(comment => comment.author._id.toString() !== userId)
+        );
+  
+        const commentNotifications = newPostComments.map(post => ({
+            type: 'comment',
+            postId: post._id,
+            postTitle: post.title,
+            commentAuthor: post.comments.find(comment => comment.author._id.toString() !== userId).author.username,
+            commentText: post.comments.find(comment => comment.author._id.toString() !== userId).text
+        }));
+  
+        // Combine the notifications
+        const notifications = [...replyNotifications, ...commentNotifications];
+  
+        // Get total unread notifications count
+        const unreadNotifications = notifications.length;
+  
+        res.json({ unreadNotifications, notifications });
+    } catch (error) {
+        console.error("Error fetching notifications with details:", error);
+        res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
+    }
+  });
 
 
 
 
 // Reset unread notifications count (when user clicks profile)
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
-  try {
-      const userId = req.user.userId;
-      // Find all comments by the user
-      const userComments = await Comment.find({ author: userId }).populate('replies');
-
-      // For each comment, go through all replies and if the current user hasn't read it
-      for (let comment of userComments) {
-          if (comment.replies && Array.isArray(comment.replies)) {
-              for (let reply of comment.replies) {
-                  if (reply.readBy && !reply.readBy.includes(userId)) {
-                      reply.readBy.push(userId);
-                      await reply.save();
-                  }
-              }
-          }
-      }
-
-      // Reset the user's unread notifications count
-      await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
-
-      res.json({ message: 'Notifications cleared' });
-  } catch (error) {
-      console.error("Error resetting notifications:", error);
-      res.status(500).json({ message: "Failed to reset notifications", error: error.message });
-  }
-});
+    try {
+        const userId = req.user.userId;
+        // Find all comments by the user
+        const userComments = await Comment.find({ author: userId }).populate('replies');
+  
+        // For each comment, go through all replies and if the current user hasn't read it
+        for (let comment of userComments) {
+            if (comment.replies && Array.isArray(comment.replies)) {
+                for (let reply of comment.replies) {
+                    if (reply.readBy && !reply.readBy.includes(userId)) {
+                        reply.readBy.push(userId);
+                        await reply.save();
+                    }
+                }
+            }
+        }
+  
+        // Reset the user's unread notifications count
+        await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
+  
+        res.json({ message: 'Notifications cleared' });
+    } catch (error) {
+        console.error("Error resetting notifications:", error);
+        res.status(500).json({ message: "Failed to reset notifications", error: error.message });
+    }
+  });
 
 //profile pic upload
 router.post('/profile/update', authenticateToken, upload.single('profilePicture'), async (req, res) => {
