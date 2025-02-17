@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload'); // Import the upload middleware
 const mongoose = require('mongoose'); // Ensure Mongoose is required
 const { postLimiter, commentLimiter } = require('../middleware/rateLimit'); // Import rate limiters
+const authenticateToken = require('../middleware/auth');
 
 // Middleware to verify JWT and protect routes
 const authenticateToken = (req, res, next) => {
@@ -230,43 +231,28 @@ router.post('/:id/comments', authenticateToken, upload.single('file'), async (re
         const newComment = new Comment({
             author: req.user.userId,
             text: text,
-            imageUrl: imageUrl, // Store Cloudinary URL (if it's an image)
-            videoUrl: videoUrl, // Store Cloudinary URL (if it's a video)
-            post: req.params.id  //Add post id,VERY IMPORTANT
+            imageUrl: imageUrl,
+            videoUrl: videoUrl,
+            post: req.params.id
         });
-        await newComment.save(); //Save it before you push it.
+        await newComment.save();
 
-        post.comments.push(newComment._id); //Push comment id.
+        post.comments.push(newComment._id);
 
         // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
         await post.save();
-
-        const commenterId = req.user.userId; // Get the commenter's ID
-        const postAuthorId = post.author.toString();
-
-        console.log(`Commenter ID: ${commenterId}`);
-        console.log(`Post Author ID: ${postAuthorId}`);
-
-        // Check if the commenter is not the same as the post author
-        if (postAuthorId !== commenterId) {
-            console.log("Incrementing unreadNotifications for post author");  // Add this log
+        
+        // Increment unreadNotifications for the post author (if it's not the commenter)
+        if (post.author.toString() !== req.user.userId) {
             await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
-
-            // ***ADD LOGGING HERE TO CHECK IF UPDATE WAS SUCCESSFUL***
-            const updatedUser = await User.findById(post.author._id);
-            console.log(`Post author's unreadNotifications count: ${updatedUser.unreadNotifications}`);
-        } else {
-            console.log("Commenter is the same as the post author, not incrementing unreadNotifications");
         }
 
-
-       //Populate the author.
         const populatedPost = await Post.findById(req.params.id)
             .populate('author', 'username')
             .populate({
                 path: 'comments',
-                populate: {  //Nested populate to get comment authors
+                populate: {
                     path: 'author',
                     select: 'username'
                 }
@@ -274,10 +260,10 @@ router.post('/:id/comments', authenticateToken, upload.single('file'), async (re
 
         res.status(201).json(populatedPost);
     } catch (error) {
+        console.error("Error creating comment:", error);
         res.status(500).json({ message: error.message });
     }
 });
-
 // Add a reply to a comment (protected route)
 router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.single('image'), async (req, res) => {
     try {
@@ -316,19 +302,15 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
         // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
         await post.save();
-
+        
         // Increment notifications for both comment author AND post author
-         // 1. Increment for comment author (original code)
-         // 1. Increment for comment author (original code)
+        // 1. Increment for comment author (original code)
         if (parentComment.author.toString() !== req.user.userId) {  // Make sure not to notify the user replying to themselves
             await User.findByIdAndUpdate(parentComment.author._id, { $inc: { unreadNotifications: 1 } });
         }
 
         // 2. Increment for post author (new code)
         if (post.author.toString() !== req.user.userId && post.author.toString() !== parentComment.author.toString()) {
-             // Make sure not to notify if:
-             // - User is replying to their own post OR
-             // - User is replying to their own comment on their own post
             await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
         }
 

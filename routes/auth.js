@@ -114,69 +114,35 @@ router.post('/login', async (req, res) => {
     try {
         const userId = req.user.userId;
 
-         // 1. Find all unread replies to the user's comments
-         const unreadReplyNotifications = await Comment.find({
-            'replies.readBy': { $ne: userId }, // Replies not read by the user
-            author: userId, // Comments authored by the user
-            parentComment: { $ne: null } // This makes it a reply
-        }).populate({
-            path: 'post',
-            select: '_id title' // Select the post ID and title
-        }).populate({
-          path: 'parentComment',
-          select: '_id text'
-        }).limit(1); // Limit to 1, we only need to know if there are any
+        // 1. Find all unread replies to the user's comments
+        const unreadReplyNotifications = await Comment.find({
+            author: userId
+        }).populate('post').limit(1);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
-        const newPostComments = await Post.find({
-            author: userId,
-            'comments.author': { $ne: userId }
-        }).populate({
-            path: 'comments',
-            match: { author: { $ne: userId } }, // Get the first new comment
-            options: { limit: 1, sort: { createdAt: -1 } } // Sort by creation date
-        }).limit(1);
+        const newPostComments = await Post.find({ author: userId}).limit(1);
 
-        const notifications = [];
-
-        if (unreadReplyNotifications.length > 0) {
-            const reply = unreadReplyNotifications[0];
-            // **ADD THIS CHECK:**
-            if (reply.post) {
-                notifications.push({
-                    type: 'reply',
-                    message: `New reply to your comment on post: ${reply.post.title}`,
-                    postId: reply.post._id,
-                    commentId: reply.parentComment._id
-                });
-            }
-        }
-
-        if (newPostComments.length > 0) {
-            const post = newPostComments[0];
-            // Check if there are any new comments to begin with
-            if (post.comments.length > 0) {
-                notifications.push({
-                    type: 'comment',
-                    message: `New comment on your post: ${post.title}`,
-                    postId: post._id,
-                    commentId: post.comments[0]._id //Comment ID.
-                });
-            }
-        }
+        // Combine the notifications
+        const hasNotifications = unreadReplyNotifications.length > 0 || newPostComments.length > 0;
 
         // Get total unread notifications count
         const user = await User.findById(userId);
         const unreadNotifications = user.unreadNotifications;
+        let postId = null
 
-        // 3. Construct a response
-        if (notifications.length > 0) {
-            res.json({
-                unreadNotifications: unreadNotifications,
-                notifications: notifications // Return detailed notification objects
-            });
+        // 3. Construct a simpler response
+        if (hasNotifications) {
+            let message = "You have new activity!";
+            if (unreadReplyNotifications.length > 0) {
+                message = `You have new replies to your comments.`;
+                postId = unreadReplyNotifications[0].post._id
+            } else {
+                message = "You have new activity on your posts!";
+                postId = newPostComments[0]._id;
+            }
+            res.json({ unreadNotifications: unreadNotifications, message: message, postId: postId });
         } else {
-            res.json({ unreadNotifications: 0, notifications: [] });
+            res.json({ unreadNotifications: 0, message: 'No new activity', postId: null });
         }
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
@@ -190,9 +156,7 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
         const userId = req.user.userId;
         console.log(`Resetting notifications for user: ${userId}`);
 
-        let notificationsUpdated = false; // Flag to track if any notifications were updated
-
-            // Reset the user's unread notifications count even if no replies/comments were updated
+        // Reset the user's unread notifications count even if no replies/comments were updated
         console.log("Resetting user unreadNotifications");
         await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
         notificationsUpdated = true; // Consider the notifications as updated since we reset the count
