@@ -120,7 +120,8 @@ router.post('/login', async (req, res) => {
 
         // 1. Find new replies to comments on *your* posts
         const unreadReplyNotifications = await Comment.find({
-            post: { $in: await Post.find({ author: userId }).distinct('_id') } // Find comments related to your posts
+            post: { $in: await Post.find({ author: userId }).distinct('_id') }, // Find comments related to your posts
+            author: { $ne: userId } // Ensure the comment author is not the same as the user
         }).populate('post').limit(1);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
@@ -130,7 +131,7 @@ router.post('/login', async (req, res) => {
         if (unreadReplyNotifications.length > 0) {
             message = `You have new replies to your comments.`;
             postId = unreadReplyNotifications[0].post?._id || null; //Safely get postId
-             if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
+            if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
                 console.error("Invalid or Missing Post ID for Reply Notification", { postId, notification: unreadReplyNotifications[0] });
                 postId = null;
                 message = "No new activity."  //If something broken,then show nothing.
