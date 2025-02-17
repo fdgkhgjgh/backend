@@ -130,18 +130,22 @@ router.post('/login', async (req, res) => {
             if (Array.isArray(comment.replies)) {
                 const unreadReplies = comment.replies.filter(reply => reply.readBy && !reply.readBy.includes(userId));
                 for (const reply of unreadReplies) {
-                    notifications.push({
-                        type: 'reply',
-                        message: `New reply to your comment on post "${comment.post.title}"`,
-                        postId: comment.post._id,
-                        commentId: comment._id, //Add the comment id.
-                        replyId: reply._id,
-                    });
+                   if (comment.post && comment.post.title) {
+                        notifications.push({
+                            type: 'reply',
+                            message: `New reply to your comment on post "${comment.post.title}"`,
+                            postId: comment.post._id,
+                            commentId: comment._id, //Add the comment id.
+                            replyId: reply._id,
+                        });
+                    } else {
+                        console.warn("Skipping reply notification due to missing or invalid post:", comment);
+                    }
                 }
     
-                 // Mark replies as read by the user.
+                // Mark replies as read by the user.  <--- THIS IS WHERE THE PROBLEM WAS
                 comment.replies.forEach(reply => {
-                    if (!reply.readBy.includes(userId)) {
+                   if (reply.readBy && !reply.readBy.includes(userId)) {  // <--- ADD THE CHECK HERE
                         reply.readBy.push(userId);
                     }
                 });
