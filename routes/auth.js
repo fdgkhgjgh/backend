@@ -104,9 +104,18 @@ router.post('/login', async (req, res) => {
   
   
   // Logout -  Client-side handles token removal
-  router.get('/notifications', authenticateToken, async (req, res) => {
+  router.post('/logout', (req, res) => {
+    // On the client-side, remove the JWT from local storage or cookies.  There's no server-side session to invalidate with JWT.
+    res.status(200).json({ message: 'Logout successful' });
+});
+
+ // In the notifications route
+ router.get('/notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
+
+        let message = "No new activity.";  // Default message
+        let postId = null;
 
         // 1. Find all unread replies to the user's comments
         const unreadReplyNotifications = await Comment.find({
@@ -116,39 +125,31 @@ router.post('/login', async (req, res) => {
         // 2. Find all posts where the user is the author and find new comments on those posts
         const newPostComments = await Post.find({ author: userId }).populate('comments').limit(1);
 
-        // Combine the notifications
-        const hasNotifications = unreadReplyNotifications.length > 0 || newPostComments.length > 0;
+        // Prioritize replies
+        if (unreadReplyNotifications.length > 0) {
+            message = `You have new replies to your comments.`;
+            postId = unreadReplyNotifications[0].post?._id || null; //Safely get postId
+             if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
+                console.error("Invalid or Missing Post ID for Reply Notification", { postId, notification: unreadReplyNotifications[0] });
+                postId = null;
+                message = "No new activity."  //If something broken,then show nothing.
+            }
+        } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) {
+            message = "You have new activity on your posts!";
+            postId = newPostComments[0]?._id || null;  //Safely get postId
 
-        // Get total unread notifications count
-        const user = await User.findById(userId);
-        const unreadNotifications = user.unreadNotifications;
-        let postId = null
-
-        // 3. Construct a simpler response
-        if (hasNotifications) {
-            let message = "You have new activity!";
-            if (unreadReplyNotifications.length > 0) {
-                message = `You have new replies to your comments.`;
-                postId = unreadReplyNotifications[0].post._id
-            } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) {
-                message = "You have new activity on your posts!";
-                console.log("newPostComments[0]:", newPostComments[0]);
-                //console.log("newPostComments[0]:", newPostComments[0]);
-                postId = newPostComments[0]._id;
-
-                if (!mongoose.Types.ObjectId.isValid(postId)) {  //ADDED THIS
-                   console.error("Invalid Post ID Detected!", postId); //ADDED THIS
-                   postId = null;  //ADDED THIS
-                   message = "No new activity."; //ADDED THIS
-                }
-            } else {
+            if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
+                console.error("Invalid or Missing Post ID for Post Notification", { postId, post: newPostComments[0] });
+                postId = null;
                 message = "No new activity.";
             }
-
-            res.json({ unreadNotifications: unreadNotifications, message: message, postId: postId });
-        } else {
-            res.json({ unreadNotifications: 0, message: 'No new activity', postId: null });
         }
+
+        const user = await User.findById(userId);
+        const unreadNotifications = user.unreadNotifications;
+
+        res.json({ unreadNotifications: unreadNotifications, message: message, postId: postId });
+
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
         res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
