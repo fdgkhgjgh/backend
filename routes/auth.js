@@ -9,6 +9,7 @@ const Post = require('../models/Post'); // Import the Post model
 const Comment = require('../models/Comment'); // Import the Comment model
 const upload = require('../middleware/upload'); // <--- IMPORT IT HERE, AT THE TOP!
 const cloudinary = require('cloudinary').v2;
+const mongoose = require('mongoose');  //Import mongoose
 
 // In-memory store for registration attempts (consider Redis for production)
 const registrationAttempts = {};  // <--- DECLARE IT HERE, BEFORE THE MIDDLEWARE!
