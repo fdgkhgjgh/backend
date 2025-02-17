@@ -241,10 +241,23 @@ router.post('/:id/comments', authenticateToken, upload.single('file'), async (re
         // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
         await post.save();
-        
+
+        const commenterId = req.user.userId; // Get the commenter's ID
+        const postAuthorId = post.author.toString();
+
+        console.log(`Commenter ID: ${commenterId}`);
+        console.log(`Post Author ID: ${postAuthorId}`);
+
         // Check if the commenter is not the same as the post author
-        if (post.author.toString() !== req.user.userId) {
+        if (postAuthorId !== commenterId) {
+            console.log("Incrementing unreadNotifications for post author");  // Add this log
             await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
+
+            // ***ADD LOGGING HERE TO CHECK IF UPDATE WAS SUCCESSFUL***
+            const updatedUser = await User.findById(post.author._id);
+            console.log(`Post author's unreadNotifications count: ${updatedUser.unreadNotifications}`);
+        } else {
+            console.log("Commenter is the same as the post author, not incrementing unreadNotifications");
         }
 
 
