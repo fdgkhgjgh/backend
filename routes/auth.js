@@ -136,9 +136,10 @@ router.post('/login', async (req, res) => {
             if (unreadReplyNotifications.length > 0) {
                 message = `You have new replies to your comments.`;
                 postId = unreadReplyNotifications[0].post._id
-            } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) { //Added code here.
+            } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) {
                 message = "You have new activity on your posts!";
-                console.log("newPostComments[0]:", newPostComments[0]); // <--- ADD THIS
+                console.log("newPostComments:", newPostComments); // Debugging
+                console.log("newPostComments[0]:", newPostComments[0]);
                 postId = newPostComments[0]._id;
             } else {
                 message = "No new activity.";
