@@ -113,7 +113,9 @@ router.post('/login', async (req, res) => {
  // In the notifications route
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
+        console.log("Notification route hit!"); //ADD THIS
         const userId = req.user.userId;
+        console.log("User ID from token:", userId); //ADD THIS
 
         let message = "No new activity.";  // Default message
         let postId = null;
@@ -124,8 +126,12 @@ router.post('/login', async (req, res) => {
             author: { $ne: userId } // Ensure the comment author is not the same as the user
         }).populate('post').limit(1);
 
+        console.log("unreadReplyNotifications:", unreadReplyNotifications); //ADD THIS
+
         // 2. Find all posts where the user is the author and find new comments on those posts
         const newPostComments = await Post.find({ author: userId }).populate('comments').limit(1);
+
+        console.log("newPostComments:", newPostComments); //ADD THIS
 
         // Prioritize replies
         if (unreadReplyNotifications.length > 0) {
@@ -149,7 +155,7 @@ router.post('/login', async (req, res) => {
 
         const user = await User.findById(userId);
         const unreadNotifications = user.unreadNotifications;
-
+        console.log("unreadNotifications from user:", unreadNotifications) //ADD THIS
         res.json({ unreadNotifications: unreadNotifications, message: message, postId: postId });
 
     } catch (error) {
