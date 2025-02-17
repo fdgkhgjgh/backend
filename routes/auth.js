@@ -160,7 +160,7 @@ router.post('/login', async (req, res) => {
 
         if (latestActivity) {
             if (latestActivityType === "reply") {
-                message = `New reply by ${latestActivity.author.username} on a comment in your post: ${latestActivity.post.title}`; // More specific message
+                message = `New reply by ${latestActivity.author.username} on a comment in your post(非此帖，请自行查询相关留下评论的帖子): ${latestActivity.post.title}`; // More specific message
                 postId = latestActivity.post?._id || null;
             } else if (latestActivityType === "comment") {
                 message = `New comment on your post: ${latestActivity.title} by ${latestActivity.author.username}`; // More specific message
