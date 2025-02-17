@@ -125,36 +125,52 @@ router.post('/login', async (req, res) => {
         const unreadReplyNotifications = await Comment.find({
             post: { $in: await Post.find({ author: userId }).distinct('_id') }, // Find comments related to your posts
             author: { $ne: userId } // Ensure the comment author is not the same as the user
-        }).populate('post').populate('author', 'username').limit(1);
+        })
+        .sort({ createdAt: -1 })  // Sort by createdAt descending
+        .populate('post').populate('author', 'username').limit(1);
 
         console.log("unreadReplyNotifications:", unreadReplyNotifications);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
-        const newPostComments = await Post.find({ author: userId }).populate('comments').populate('author', 'username').limit(1);
+        const newPostComments = await Post.find({ author: userId })
+        .sort({ createdAt: -1 })   // Sort by createdAt descending
+        .populate('comments').populate('author', 'username').limit(1);
 
         console.log("newPostComments:", newPostComments);
 
-        // Prioritize replies
-        if (unreadReplyNotifications.length > 0) {
-            const reply = unreadReplyNotifications[0]; // Access the first reply
-            message = `New reply by ${reply.author.username} on a comment in your post: ${reply.post.title}`; // More specific message
-            postId = reply.post?._id || null;
-            activityType = "reply"; // Set activity type to "reply"
+        let latestActivity = null; // To store the latest activity
+        let latestActivityType = null;
 
-            if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
-                console.error("Invalid or Missing Post ID for Reply Notification", { postId, notification: unreadReplyNotifications[0] });
-                postId = null;
-                message = "No new activity.";
-                activityType = null; // Reset activity type
+        if (unreadReplyNotifications.length > 0 && newPostComments.length > 0) {
+            // Compare the createdAt dates of the latest reply and the latest comment
+            if (unreadReplyNotifications[0].createdAt > newPostComments[0].createdAt) {
+                latestActivity = unreadReplyNotifications[0];
+                latestActivityType = "reply";
+            } else {
+                latestActivity = newPostComments[0];
+                latestActivityType = "comment";
             }
-        } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) {
-            const post = newPostComments[0]; // Access the first post
-            message = `New comment on your post: ${post.title} by ${post.author.username}`; // More specific message
-            postId = post?._id || null;
-            activityType = "comment"; // Set activity type to "comment"
+        } else if (unreadReplyNotifications.length > 0) {
+            latestActivity = unreadReplyNotifications[0];
+            latestActivityType = "reply";
+        } else if (newPostComments.length > 0) {
+            latestActivity = newPostComments[0];
+            latestActivityType = "comment";
+        }
+
+        if (latestActivity) {
+            if (latestActivityType === "reply") {
+                message = `New reply by ${latestActivity.author.username} on a comment in your post: ${latestActivity.post.title}`; // More specific message
+                postId = latestActivity.post?._id || null;
+            } else if (latestActivityType === "comment") {
+                message = `New comment on your post: ${latestActivity.title} by ${latestActivity.author.username}`; // More specific message
+                postId = latestActivity._id || null;  // Use post's own ID here
+            }
+
+            activityType = latestActivityType; // Set activity type
 
             if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
-                console.error("Invalid or Missing Post ID for Post Notification", { postId, post: newPostComments[0] });
+                console.error("Invalid or Missing Post ID for Notification", { postId, activity: latestActivity });
                 postId = null;
                 message = "No new activity.";
                 activityType = null; // Reset activity type
