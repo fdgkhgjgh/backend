@@ -126,24 +126,27 @@ router.post('/login', async (req, res) => {
         console.log("Unread replies found:", unreadReplyNotifications); // ADDED
 
         for (const comment of unreadReplyNotifications) {
-            const unreadReplies = comment.replies.filter(reply => !reply.readBy.includes(userId));  // find replies not read yet by user
-            for (const reply of unreadReplies) {
-                notifications.push({
-                    type: 'reply',
-                    message: `New reply to your comment on post "${comment.post.title}"`,
-                    postId: comment.post._id,
-                    commentId: comment._id, //Add the comment id.
-                    replyId: reply._id,
-                });
-            }
-
-             // Mark replies as read by the user.
-            comment.replies.forEach(reply => {
-                if (!reply.readBy.includes(userId)) {
-                    reply.readBy.push(userId);
+            // Make sure comment.replies exist and is an array before process
+            if (Array.isArray(comment.replies)) {
+                const unreadReplies = comment.replies.filter(reply => reply.readBy && !reply.readBy.includes(userId));
+                for (const reply of unreadReplies) {
+                    notifications.push({
+                        type: 'reply',
+                        message: `New reply to your comment on post "${comment.post.title}"`,
+                        postId: comment.post._id,
+                        commentId: comment._id, //Add the comment id.
+                        replyId: reply._id,
+                    });
                 }
-            });
-            await comment.save();
+    
+                 // Mark replies as read by the user.
+                comment.replies.forEach(reply => {
+                    if (!reply.readBy.includes(userId)) {
+                        reply.readBy.push(userId);
+                    }
+                });
+                await comment.save();
+            }
         }
 
 
