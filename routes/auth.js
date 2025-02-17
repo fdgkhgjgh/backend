@@ -113,43 +113,68 @@ router.post('/login', async (req, res) => {
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
-        
-        // Find all unread replies to the user's comments
-        const unreadReplyNotifications = await Comment.find({
-            'replies.readBy': { $ne: userId }, 
-            author: userId 
-        }).limit(5).select('post parentComment'); // Select only the necessary fields
 
-        // Find all new comments on user's posts
-        const newPostComments = await Post.find({ 
-            author: userId, 
-            'comments.author': { $ne: userId } 
-        }).limit(5).select('_id');
+         // 1. Find all unread replies to the user's comments
+         const unreadReplyNotifications = await Comment.find({
+            'replies.readBy': { $ne: userId }, // Replies not read by the user
+            author: userId, // Comments authored by the user
+            parentComment: { $ne: null } // This makes it a reply
+        }).populate({
+            path: 'post',
+            select: '_id title' // Select the post ID and title
+        }).populate({
+          path: 'parentComment',
+          select: '_id text'
+        }).limit(1); // Limit to 1, we only need to know if there are any
 
-        const hasNotifications = unreadReplyNotifications.length > 0 || newPostComments.length > 0;
+        // 2. Find all posts where the user is the author and find new comments on those posts
+        const newPostComments = await Post.find({
+            author: userId,
+            'comments.author': { $ne: userId }
+        }).populate({
+            path: 'comments',
+            match: { author: { $ne: userId } }, // Get the first new comment
+            options: { limit: 1, sort: { createdAt: -1 } } // Sort by creation date
+        }).limit(1);
 
-        let notifications = [];
+        const notifications = [];
 
         if (unreadReplyNotifications.length > 0) {
-            notifications = notifications.concat(unreadReplyNotifications.map(comment => ({
+            const reply = unreadReplyNotifications[0];
+            notifications.push({
                 type: 'reply',
-                postId: comment.post,
-                commentId: comment._id
-            })));
+                message: `New reply to your comment on post: ${reply.post.title}`,
+                postId: reply.post._id,
+                commentId: reply.parentComment._id
+            });
         }
 
         if (newPostComments.length > 0) {
-            notifications = notifications.concat(newPostComments.map(post => ({
-                type: 'comment',
-                postId: post._id
-            })));
+            const post = newPostComments[0];
+            // Check if there are any new comments to begin with
+            if (post.comments.length > 0) {
+                notifications.push({
+                    type: 'comment',
+                    message: `New comment on your post: ${post.title}`,
+                    postId: post._id,
+                    commentId: post.comments[0]._id //Comment ID.
+                });
+            }
         }
 
-        res.json({
-            unreadNotifications: notifications.length,
-            notifications: notifications
-        });
+        // Get total unread notifications count
+        const user = await User.findById(userId);
+        const unreadNotifications = user.unreadNotifications;
 
+        // 3. Construct a response
+        if (notifications.length > 0) {
+            res.json({
+                unreadNotifications: unreadNotifications,
+                notifications: notifications // Return detailed notification objects
+            });
+        } else {
+            res.json({ unreadNotifications: 0, notifications: [] });
+        }
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
         res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
