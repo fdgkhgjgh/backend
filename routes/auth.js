@@ -70,27 +70,27 @@ router.post('/register', registrationLimiter, async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        console.log('Received login request:'); // ADDED
-        console.log('  Username:', username); // ADDED
-        console.log('  Password:', password); // ADDED
+        //console.log('Received login request:'); // ADDED
+        //console.log('  Username:', username); // ADDED
+        //console.log('  Password:', password); // ADDED
 
         if (!username || !password) {
             return res.status(400).json({ message: 'Username and password are required' });
         }
 
         const user = await User.findOne({ username });
-        console.log('Found user:', user); // ADDED
+        //console.log('Found user:', user); // ADDED
 
         if (!user) {
-            console.log('User not found'); // ADDED
+            //console.log('User not found'); // ADDED
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const isMatch = await user.comparePassword(password);
-        console.log('Password match:', isMatch); // ADDED
+        //console.log('Password match:', isMatch); // ADDED
 
         if (!isMatch) {
-            console.log('Password does not match'); // ADDED
+            //console.log('Password does not match'); // ADDED
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
@@ -113,9 +113,9 @@ router.post('/login', async (req, res) => {
  // In the notifications route
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
-        console.log("Notification route hit!");
+        //console.log("Notification route hit!");
         const userId = req.user.userId;
-        console.log("User ID from token:", userId);
+        //console.log("User ID from token:", userId);
 
         let message = "No new activity.";  // Default message
         let postId = null;
@@ -129,14 +129,14 @@ router.post('/login', async (req, res) => {
         .sort({ createdAt: -1 })  // Sort by createdAt descending
         .populate('post').populate('author', 'username').limit(1);
 
-        console.log("unreadReplyNotifications:", unreadReplyNotifications);
+        //console.log("unreadReplyNotifications:", unreadReplyNotifications);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
         const newPostComments = await Post.find({ author: userId })
         .sort({ createdAt: -1 })   // Sort by createdAt descending
         .populate('comments').populate('author', 'username').limit(1);
 
-        console.log("newPostComments:", newPostComments);
+        //console.log("newPostComments:", newPostComments);
 
         let latestActivity = null; // To store the latest activity
         let latestActivityType = null;
@@ -179,7 +179,7 @@ router.post('/login', async (req, res) => {
 
         const user = await User.findById(userId);
         const unreadNotifications = user.unreadNotifications;
-        console.log("unreadNotifications from user:", unreadNotifications)
+        //console.log("unreadNotifications from user:", unreadNotifications)
         res.json({
             unreadNotifications: unreadNotifications,
             message: message,
@@ -197,14 +197,14 @@ router.post('/login', async (req, res) => {
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
-        console.log(`Resetting notifications for user: ${userId}`);
+        //console.log(`Resetting notifications for user: ${userId}`);
 
         // Reset the user's unread notifications count even if no replies/comments were updated
-        console.log("Resetting user unreadNotifications");
+        //console.log("Resetting user unreadNotifications");
         await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
         notificationsUpdated = true; // Consider the notifications as updated since we reset the count
 
-        console.log("Notifications cleared successfully.");
+        //console.log("Notifications cleared successfully.");
 
         res.json({ message: 'Notifications cleared' });
     } catch (error) {

@@ -70,7 +70,7 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
+        //console.log(`Post with id ${req.params.id} found:`, post); // Log the populated post
 
         res.json(post);  // Send back the populated post directly!
     } catch (error) {
@@ -314,7 +314,7 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
 // Get replies to a comment
 router.get('/comments/:commentId/replies', async (req, res) => {
-    console.log('Fetching replies for comment:', req.params.commentId);
+    //console.log('Fetching replies for comment:', req.params.commentId);
     try {
         // Validate commentId
         if (!mongoose.isValidObjectId(req.params.commentId)) {
@@ -324,7 +324,7 @@ router.get('/comments/:commentId/replies', async (req, res) => {
 
         const comment = await Comment.findById(req.params.commentId);
         if (!comment) {
-            console.log('Comment not found for ID:', req.params.commentId);
+            //console.log('Comment not found for ID:', req.params.commentId);
             return res.status(404).json({ message: 'Comment not found' });
         }
 
@@ -337,7 +337,7 @@ router.get('/comments/:commentId/replies', async (req, res) => {
             }
         });
 
-        console.log('Fetched replies:', comment.replies);
+        //console.log('Fetched replies:', comment.replies);
         res.json(comment.replies);
     } catch (error) {
         console.error("Error fetching replies:", error);
