@@ -183,23 +183,27 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
 
         let notificationsUpdated = false; // Flag to track if any notifications were updated
 
-        // 1. Mark replies as read (applies to comments authored by user)
+        // 1. Mark replies as read for comments authored by the user
         const userComments = await Comment.find({ author: userId }).populate('replies');
         console.log(`Found ${userComments.length} comments by the user`);
 
         for (let comment of userComments) {
             if (comment.replies && Array.isArray(comment.replies)) {
                 for (let reply of comment.replies) {
-                    if (reply.readBy && !reply.readBy.includes(userId)) {
+                    console.log(`Checking reply ${reply._id} for read status. readBy: ${reply.readBy}`);
+                    if (!reply.readBy.includes(userId)) {
                         console.log(`Marking reply ${reply._id} as read for user ${userId}`);
                         reply.readBy.push(userId);
                         await reply.save();
+                        console.log(`reply ${reply._id} saved. New readBy: ${reply.readBy}`);
                         notificationsUpdated = true;
+                    } else {
+                        console.log(`reply ${reply._id} already read by user ${userId}`);
                     }
                 }
             }
         }
-         // 2. Mark replies as read (applies to comments authored by other users)
+        // 2. Mark comments and replies as read for user origin
         const userPosts = await Post.find({}).populate({
             path: 'comments',
             populate: {
@@ -209,15 +213,18 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
 
         for (let post of userPosts) {
             for (let comment of post.comments) {
-                if (comment.author.toString() !== userId) { // Only process other users' comments
-                     if (comment.replies && Array.isArray(comment.replies)) {
-                        for (let reply of comment.replies) {
-                             if (reply.readBy && !reply.readBy.includes(userId) && reply.author.toString() === userId) {
-                                console.log(`Marking reply ${reply._id} of comment ${comment._id} as read for user ${userId}`);
-                                reply.readBy.push(userId);
-                                await reply.save();
-                                notificationsUpdated = true;
-                            }
+               
+                if (comment.replies && Array.isArray(comment.replies)) {
+                    for (let reply of comment.replies) {
+                        console.log(`Checking reply ${reply._id} for read status. readBy: ${reply.readBy}`);
+                        if (!reply.readBy.includes(userId)) {
+                            console.log(`Marking reply ${reply._id} of comment ${comment._id} as read for user ${userId}`);
+                            reply.readBy.push(userId);
+                            await reply.save();
+                            console.log(`reply ${reply._id} saved. New readBy: ${reply.readBy}`);
+                            notificationsUpdated = true;
+                        } else {
+                            console.log(`reply ${reply._id} already read by user ${userId}`);
                         }
                     }
                 }
