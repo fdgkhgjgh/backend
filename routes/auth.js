@@ -118,61 +118,30 @@ router.post('/login', async (req, res) => {
         const unreadReplyNotifications = await Comment.find({
             'replies.readBy': { $ne: userId }, // Replies not read by the user
             author: userId // Comments authored by the user
-        }).populate({
-            path: 'replies',
-            match: { readBy: { $ne: userId } }, // Only fetch unread replies
-            populate: {
-                path: 'author',
-                select: 'username'
-            }
-        });
+        }).limit(1); // Limit to 1, we only need to know if there are any
 
-        // 2. Extract relevant information for reply notifications
-        const replyNotifications = unreadReplyNotifications.reduce((acc, comment) => {
-            comment.replies.forEach(reply => {
-                acc.push({
-                    type: 'reply',
-                    postId: comment.post,
-                    commentId: comment._id,
-                    commentText: comment.text,
-                    replyAuthor: reply.author.username,
-                    replyText: reply.text
-                });
-            });
-            return acc;
-        }, []);
-
-        // 3. Find all posts where the user is the author and find new comments on those posts
-        const newPostComments = await Post.find({ author: userId }).populate({
-            path: 'comments',
-            match: { author: { $ne: userId } }, // Only fetch comments not authored by the user
-            populate: {
-                path: 'author',
-                select: 'username'
-            }
-        });
-
-        // 4. Extract relevant information for comment notifications
-        const commentNotifications = newPostComments.reduce((acc, post) => {
-            post.comments.forEach(comment => {
-                acc.push({
-                    type: 'comment',
-                    postId: post._id,
-                    postTitle: post.title,
-                    commentAuthor: comment.author.username,
-                    commentText: comment.text
-                });
-            });
-            return acc;
-        }, []);
+        // 2. Find all posts where the user is the author and find new comments on those posts
+        const newPostComments = await Post.find({ author: userId, 'comments.author': { $ne: userId } }).limit(1); // Find new comments
 
         // Combine the notifications
-        const notifications = [...replyNotifications, ...commentNotifications];
+        const hasNotifications = unreadReplyNotifications.length > 0 || newPostComments.length > 0;
 
         // Get total unread notifications count
-        const unreadNotifications = notifications.length;
+        const user = await User.findById(userId);
+        const unreadNotifications = user.unreadNotifications;
 
-        res.json({ unreadNotifications, notifications });
+        // 3. Construct a simpler response
+        if (hasNotifications) {
+            let message = "You have new activity!";
+            if (unreadReplyNotifications.length > 0) {
+                message = `You have new replies to your comments.`;
+            } else {
+                message = "You have new activity on your posts!";
+            }
+            res.json({ unreadNotifications: unreadNotifications, message: message });
+        } else {
+            res.json({ unreadNotifications: 0, message: 'No new activity' });
+        }
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
         res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
