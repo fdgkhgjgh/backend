@@ -104,13 +104,7 @@ router.post('/login', async (req, res) => {
   
   
   // Logout -  Client-side handles token removal
-  router.post('/logout', (req, res) => {
-      // On the client-side, remove the JWT from local storage or cookies.  There's no server-side session to invalidate with JWT.
-      res.status(200).json({ message: 'Logout successful' });
-  });
-
- // backend/routes/auth.js - In the notifications route
- router.get('/notifications', authenticateToken, async (req, res) => {
+  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
 
@@ -138,9 +132,15 @@ router.post('/login', async (req, res) => {
                 postId = unreadReplyNotifications[0].post._id
             } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) {
                 message = "You have new activity on your posts!";
-                console.log("newPostComments:", newPostComments); // Debugging
                 console.log("newPostComments[0]:", newPostComments[0]);
+                //console.log("newPostComments[0]:", newPostComments[0]);
                 postId = newPostComments[0]._id;
+
+                if (!mongoose.Types.ObjectId.isValid(postId)) {  //ADDED THIS
+                   console.error("Invalid Post ID Detected!", postId); //ADDED THIS
+                   postId = null;  //ADDED THIS
+                   message = "No new activity."; //ADDED THIS
+                }
             } else {
                 message = "No new activity.";
             }
