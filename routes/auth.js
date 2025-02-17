@@ -138,6 +138,7 @@ router.post('/login', async (req, res) => {
                 postId = unreadReplyNotifications[0].post._id
             } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) { //Added code here.
                 message = "You have new activity on your posts!";
+                console.log("newPostComments[0]:", newPostComments[0]); // <--- ADD THIS
                 postId = newPostComments[0]._id;
             } else {
                 message = "No new activity.";
