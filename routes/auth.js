@@ -185,8 +185,13 @@ router.post('/reset-notifications', authenticateToken, async (req, res) => {
         const userId = req.user.userId;
         console.log(`Resetting notifications for user: ${userId}`);
 
-        // Reset the user's unread notifications count
+        let notificationsUpdated = false; // Flag to track if any notifications were updated
+
+            // Reset the user's unread notifications count even if no replies/comments were updated
+        console.log("Resetting user unreadNotifications");
         await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
+        notificationsUpdated = true; // Consider the notifications as updated since we reset the count
+
         console.log("Notifications cleared successfully.");
 
         res.json({ message: 'Notifications cleared' });
