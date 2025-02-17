@@ -113,13 +113,17 @@ router.post('/login', async (req, res) => {
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
+        console.log("Fetching notifications for user:", userId); // ADDED
+
         const notifications = [];
 
         // 1. Find all unread replies to the user's comments
+        console.log("Querying unread replies..."); // ADDED
         const unreadReplyNotifications = await Comment.find({
             author: userId, // Comments authored by the user
             'replies.readBy': { $ne: userId } // Replies not read by the user
         }).populate('post');  // Populate the 'post' field to get post details
+        console.log("Unread replies found:", unreadReplyNotifications); // ADDED
 
         for (const comment of unreadReplyNotifications) {
             const unreadReplies = comment.replies.filter(reply => !reply.readBy.includes(userId));  // find replies not read yet by user
