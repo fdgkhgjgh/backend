@@ -113,77 +113,42 @@ router.post('/login', async (req, res) => {
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
-        console.log("Fetching notifications for user:", userId); // ADDED
-
-        const notifications = [];
-
-        // 1. Find all unread replies to the user's comments
-        console.log("Querying unread replies..."); // ADDED
+        
+        // Find all unread replies to the user's comments
         const unreadReplyNotifications = await Comment.find({
-            author: userId, // Comments authored by the user
-            'replies.readBy': { $ne: userId } // Replies not read by the user
-        }).populate('post');  // Populate the 'post' field to get post details
-        console.log("Unread replies found:", unreadReplyNotifications); // ADDED
+            'replies.readBy': { $ne: userId }, 
+            author: userId 
+        }).limit(5).select('post parentComment'); // Select only the necessary fields
 
-        for (const comment of unreadReplyNotifications) {
-            // Make sure comment.replies exist and is an array before process
-            if (Array.isArray(comment.replies)) {
-                const unreadReplies = comment.replies.filter(reply => reply.readBy && !reply.readBy.includes(userId));
-                for (const reply of unreadReplies) {
-                   if (comment.post && comment.post.title) {
-                        notifications.push({
-                            type: 'reply',
-                            message: `New reply to your comment on post "${comment.post.title}"`,
-                            postId: comment.post._id,
-                            commentId: comment._id, //Add the comment id.
-                            replyId: reply._id,
-                        });
-                    } else {
-                        console.warn("Skipping reply notification due to missing or invalid post:", comment);
-                    }
-                }
-    
-                // Mark replies as read by the user.  <--- THIS IS WHERE THE PROBLEM WAS
-                comment.replies.forEach(reply => {
-                   if (reply.readBy && !reply.readBy.includes(userId)) {  // <--- ADD THE CHECK HERE
-                        reply.readBy.push(userId);
-                    }
-                });
-                await comment.save();
-            }
+        // Find all new comments on user's posts
+        const newPostComments = await Post.find({ 
+            author: userId, 
+            'comments.author': { $ne: userId } 
+        }).limit(5).select('_id');
+
+        const hasNotifications = unreadReplyNotifications.length > 0 || newPostComments.length > 0;
+
+        let notifications = [];
+
+        if (unreadReplyNotifications.length > 0) {
+            notifications = notifications.concat(unreadReplyNotifications.map(comment => ({
+                type: 'reply',
+                postId: comment.post,
+                commentId: comment._id
+            })));
         }
 
-
-        // 2. Find all posts where the user is the author and find new comments on those posts
-        const newPostComments = await Post.find({
-            author: userId,
-            'comments.author': { $ne: userId }
-        }).populate({
-            path: 'comments',
-            populate: {
-                path: 'author',
-                select: 'username'
-            }
-        }); // Find new comments
-
-        for (const post of newPostComments) {
-            const unreadComments = post.comments.filter(comment => comment.author._id.toString() !== userId);
-            for (const comment of unreadComments) {
-                notifications.push({
-                    type: 'comment',
-                    message: `New comment on your post "${post.title}"`,
-                    postId: post._id,
-                    commentId: comment._id,
-                });
-            }
+        if (newPostComments.length > 0) {
+            notifications = notifications.concat(newPostComments.map(post => ({
+                type: 'comment',
+                postId: post._id
+            })));
         }
 
-        // Get total unread notifications count (This may require adjustment based on the queries above)
-        const user = await User.findById(userId);
-        const unreadNotifications = user.unreadNotifications;
-
-
-        res.json({ notifications, unreadNotifications });
+        res.json({
+            unreadNotifications: notifications.length,
+            notifications: notifications
+        });
 
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
@@ -191,25 +156,21 @@ router.post('/login', async (req, res) => {
     }
 });
 
-
 // Reset unread notifications count (when user clicks profile)
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
         console.log(`Resetting notifications for user: ${userId}`);
 
-        // Reset the user's unread notifications count
+        let notificationsUpdated = false; // Flag to track if any notifications were updated
+
+            // Reset the user's unread notifications count even if no replies/comments were updated
         console.log("Resetting user unreadNotifications");
         await User.findByIdAndUpdate(userId, { $set: { unreadNotifications: 0 } });
-
-        // Optionally reset the 'readBy' array in Comment for replies
-        // Mark all replies to the user's comments as read when profile page is visited
-        await Comment.updateMany(
-            { 'replies.author': userId },
-            { $addToSet: { 'replies.$[].readBy': userId } }  // Ensure only unique user IDs are added to readBy array
-        );
+        notificationsUpdated = true; // Consider the notifications as updated since we reset the count
 
         console.log("Notifications cleared successfully.");
+
         res.json({ message: 'Notifications cleared' });
     } catch (error) {
         console.error("Error resetting notifications:", error);
