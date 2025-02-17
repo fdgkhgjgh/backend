@@ -117,9 +117,9 @@ router.post('/login', async (req, res) => {
         let message = "No new activity.";  // Default message
         let postId = null;
 
-        // 1. Find all unread replies to the user's comments
+        // 1. Find new replies to comments on *your* posts
         const unreadReplyNotifications = await Comment.find({
-            author: userId
+            post: { $in: await Post.find({ author: userId }).distinct('_id') } // Find comments related to your posts
         }).populate('post').limit(1);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
