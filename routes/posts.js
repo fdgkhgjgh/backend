@@ -306,7 +306,8 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
 
         // Increment notifications for both comment author AND post author
          // 1. Increment for comment author (original code)
-         if (parentComment.author.toString() !== req.user.userId) {  // Make sure not to notify the user replying to themselves
+         // 1. Increment for comment author (original code)
+        if (parentComment.author.toString() !== req.user.userId) {  // Make sure not to notify the user replying to themselves
             await User.findByIdAndUpdate(parentComment.author._id, { $inc: { unreadNotifications: 1 } });
         }
 
