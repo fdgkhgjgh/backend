@@ -113,44 +113,63 @@ router.post('/login', async (req, res) => {
  // In the notifications route
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
+        console.log("Notification route hit!");
         const userId = req.user.userId;
+        console.log("User ID from token:", userId);
 
         let message = "No new activity.";  // Default message
         let postId = null;
+        let activityType = null; // Add a variable to track activity type ("comment" or "reply")
 
         // 1. Find new replies to comments on *your* posts
         const unreadReplyNotifications = await Comment.find({
             post: { $in: await Post.find({ author: userId }).distinct('_id') }, // Find comments related to your posts
             author: { $ne: userId } // Ensure the comment author is not the same as the user
-        }).populate('post').limit(1);
+        }).populate('post').populate('author', 'username').limit(1);
 
+        console.log("unreadReplyNotifications:", unreadReplyNotifications);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
-        const newPostComments = await Post.find({ author: userId }).populate('comments').limit(1);
+        const newPostComments = await Post.find({ author: userId }).populate('comments').populate('author', 'username').limit(1);
+
+        console.log("newPostComments:", newPostComments);
 
         // Prioritize replies
         if (unreadReplyNotifications.length > 0) {
-            message = `您有新消息在相关帖子或评论（点击此处，new response).`;
-            postId = unreadReplyNotifications[0].post?._id || null; //Safely get postId
+            const reply = unreadReplyNotifications[0]; // Access the first reply
+            message = `New reply by ${reply.author.username} on a comment in your post: ${reply.post.title}`; // More specific message
+            postId = reply.post?._id || null;
+            activityType = "reply"; // Set activity type to "reply"
+
             if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
                 console.error("Invalid or Missing Post ID for Reply Notification", { postId, notification: unreadReplyNotifications[0] });
                 postId = null;
-                message = "No new activity."  //If something broken,then show nothing.
+                message = "No new activity.";
+                activityType = null; // Reset activity type
             }
         } else if (newPostComments.length > 0 && newPostComments[0].comments.length > 0) {
-            message = "You have new activity on your posts!";
-            postId = newPostComments[0]?._id || null;  //Safely get postId
+            const post = newPostComments[0]; // Access the first post
+            message = `New comment on your post: ${post.title} by ${post.author.username}`; // More specific message
+            postId = post?._id || null;
+            activityType = "comment"; // Set activity type to "comment"
 
             if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
                 console.error("Invalid or Missing Post ID for Post Notification", { postId, post: newPostComments[0] });
                 postId = null;
                 message = "No new activity.";
+                activityType = null; // Reset activity type
             }
         }
 
         const user = await User.findById(userId);
         const unreadNotifications = user.unreadNotifications;
-        res.json({ unreadNotifications: unreadNotifications, message: message, postId: postId });
+        console.log("unreadNotifications from user:", unreadNotifications)
+        res.json({
+            unreadNotifications: unreadNotifications,
+            message: message,
+            postId: postId,
+            activityType: activityType // Include activity type in the response
+        });
 
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
