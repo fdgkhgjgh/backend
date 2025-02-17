@@ -141,12 +141,15 @@ router.post('/login', async (req, res) => {
 
         if (unreadReplyNotifications.length > 0) {
             const reply = unreadReplyNotifications[0];
-            notifications.push({
-                type: 'reply',
-                message: `New reply to your comment on post: ${reply.post.title}`,
-                postId: reply.post._id,
-                commentId: reply.parentComment._id
-            });
+            // **ADD THIS CHECK:**
+            if (reply.post) {
+                notifications.push({
+                    type: 'reply',
+                    message: `New reply to your comment on post: ${reply.post.title}`,
+                    postId: reply.post._id,
+                    commentId: reply.parentComment._id
+                });
+            }
         }
 
         if (newPostComments.length > 0) {
