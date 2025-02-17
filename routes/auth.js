@@ -114,11 +114,65 @@ router.post('/login', async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        // Find the user and get the unreadNotifications count
-        const user = await User.findById(userId);
-        const unreadNotifications = user.unreadNotifications;
+        // 1. Find all unread replies to the user's comments
+        const unreadReplyNotifications = await Comment.find({
+            'replies.readBy': { $ne: userId }, // Replies not read by the user
+            author: userId // Comments authored by the user
+        }).populate({
+            path: 'replies',
+            match: { readBy: { $ne: userId } }, // Only fetch unread replies
+            populate: {
+                path: 'author',
+                select: 'username'
+            }
+        });
 
-        res.json({ unreadNotifications });
+        // 2. Extract relevant information for reply notifications
+        const replyNotifications = unreadReplyNotifications.reduce((acc, comment) => {
+            comment.replies.forEach(reply => {
+                acc.push({
+                    type: 'reply',
+                    postId: comment.post,
+                    commentId: comment._id,
+                    commentText: comment.text,
+                    replyAuthor: reply.author.username,
+                    replyText: reply.text
+                });
+            });
+            return acc;
+        }, []);
+
+        // 3. Find all posts where the user is the author and find new comments on those posts
+        const newPostComments = await Post.find({ author: userId }).populate({
+            path: 'comments',
+            match: { author: { $ne: userId } }, // Only fetch comments not authored by the user
+            populate: {
+                path: 'author',
+                select: 'username'
+            }
+        });
+
+        // 4. Extract relevant information for comment notifications
+        const commentNotifications = newPostComments.reduce((acc, post) => {
+            post.comments.forEach(comment => {
+                acc.push({
+                    type: 'comment',
+                    postId: post._id,
+                    postTitle: post.title,
+                    commentAuthor: comment.author.username,
+                    commentText: comment.text
+                });
+            });
+            return acc;
+        }, []);
+
+        // Combine the notifications
+        const notifications = [...replyNotifications, ...commentNotifications];
+
+        // Get total unread notifications count
+        const unreadNotifications = notifications.length;
+
+        res.json({ unreadNotifications, notifications });
     } catch (error) {
         console.error("Error fetching notifications with details:", error);
         res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
