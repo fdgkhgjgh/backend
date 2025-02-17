@@ -130,7 +130,7 @@ router.post('/login', async (req, res) => {
 
         // Prioritize replies
         if (unreadReplyNotifications.length > 0) {
-            message = `You have new replies to your comments.`;
+            message = `您有新消息在相关帖子或评论（点击此处，new response).`;
             postId = unreadReplyNotifications[0].post?._id || null; //Safely get postId
             if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
                 console.error("Invalid or Missing Post ID for Reply Notification", { postId, notification: unreadReplyNotifications[0] });
