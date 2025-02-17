@@ -120,7 +120,7 @@ router.post('/login', async (req, res) => {
         }).populate('post').limit(1);
 
         // 2. Find all posts where the user is the author and find new comments on those posts
-        const newPostComments = await Post.find({ author: userId}).limit(1);
+        const newPostComments = await Post.find({ author: userId }).limit(1);
 
         // Combine the notifications
         const hasNotifications = unreadReplyNotifications.length > 0 || newPostComments.length > 0;
@@ -136,10 +136,13 @@ router.post('/login', async (req, res) => {
             if (unreadReplyNotifications.length > 0) {
                 message = `You have new replies to your comments.`;
                 postId = unreadReplyNotifications[0].post._id
-            } else {
-                message = "You have new activity on your posts!";
-                postId = newPostComments[0]._id;
+            } else if(newPostComments.length > 0){
+              message = "You have new activity on your posts!";
+              postId = newPostComments[0]._id;
+            } else{
+              message = "No new activity."
             }
+          
             res.json({ unreadNotifications: unreadNotifications, message: message, postId: postId });
         } else {
             res.json({ unreadNotifications: 0, message: 'No new activity', postId: null });
