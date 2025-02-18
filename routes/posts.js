@@ -176,6 +176,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             return res.status(403).json({ message: "You don't have permission to delete this post." })
         }
 
+        // *** NEW CODE TO UNPIN THE POST FROM THE USER'S pinnedPosts ARRAY ***
+        const userId = req.user.userId;
+        const user = await User.findById(userId);
+        if (user) {
+            user.pinnedPosts.pull(req.params.id); // Remove the post ID from the array
+            await user.save();
+        }
+
         await Post.findByIdAndDelete(req.params.id); //Or  await post.remove();
         res.status(200).json({ message: "Post deleted successfully." })
 
