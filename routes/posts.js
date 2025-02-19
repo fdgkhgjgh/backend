@@ -265,6 +265,9 @@ router.post('/:id/comments', authenticateToken, upload.single('file'), async (re
         // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
         await post.save();
+
+        // *** UPDATE totalComments HERE ***
+        await updateTotalComments(req.params.id); // <--- ADD THIS LINE
         
         // Increment unreadNotifications for the post author (if it's not the commenter)
         if (post.author.toString() !== req.user.userId) {
@@ -325,6 +328,9 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
         // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
         await post.save();
+
+         // *** UPDATE totalComments HERE ***
+         await updateTotalComments(req.params.postId); // <--- ADD THIS LINE
         
         // Increment notifications for both comment author AND post author
         // 1. Increment for comment author (original code)
