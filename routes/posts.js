@@ -89,7 +89,7 @@ router.get('/:id', async (req, res) => {
                 path: 'comments',
                 populate: {
                     path: 'author',
-                    select: 'username'
+                    select: 'username profilePictureUrl'
                 }
             });
 
@@ -375,7 +375,7 @@ router.get('/comments/:commentId/replies', async (req, res) => {
             path: 'replies',
             populate: {
                 path: 'author',
-                select: 'username'
+                select: 'username profilePictureUrl'
             }
         });
 
