@@ -84,7 +84,7 @@ router.get('/:id', async (req, res) => {
 
     try {
         const post = await Post.findById(req.params.id)
-            .populate('author', 'username')
+            .populate('author', 'username profilePictureUrl')
             .populate({
                 path: 'comments',
                 populate: {
