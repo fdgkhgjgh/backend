@@ -47,6 +47,34 @@ router.get('/', async (req, res) => {
     }
 });
 
+// --- Helper function to update total comments count on a post
+async function updateTotalComments(postId) {
+    try {
+        const post = await Post.findById(postId);
+        if (!post) {
+            console.error(`Post not found with id: ${postId}`);
+            return;
+        }
+
+        // Fetch all comments that are NOT replies (i.e., top-level comments)
+        const topLevelComments = await Comment.find({ post: postId, parentComment: null });
+
+        let total = topLevelComments.length;
+
+        // Iterate through top-level comments and count their replies
+        for (const comment of topLevelComments) {
+            total += await Comment.countDocuments({ parentComment: comment._id });
+        }
+
+        post.totalComments = total;
+        await post.save();
+
+    } catch (error) {
+        console.error("Error updating total comments count:", error);
+    }
+}
+
+
 // Get a single post by ID, *including* its comments and replies
 router.get('/:id', async (req, res) => {
     // Check if the ID is a valid ObjectId
@@ -381,6 +409,10 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
           post.comments.pull(commentId);
           await post.save();
           await Comment.findByIdAndDelete(commentId); // And delete the comment
+
+          // Update total comments count after deleting a comment
+          await updateTotalComments(postId);
+
 
            res.status(200).json({message: "Comment deleted suceessfully."})
 

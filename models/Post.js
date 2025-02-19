@@ -21,7 +21,8 @@ const postSchema = new mongoose.Schema({
     downvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }], // Change to reference Comment model
     lastActivity: { type: Date, default: Date.now },// New field!
-    pinned: { type: Boolean, default: false } // New field!
+    pinned: { type: Boolean, default: false }, // New field!
+    totalComments: { type: Number, default: 0 } // New field!
 }, { timestamps: true });
 
 const Post = mongoose.model('Post', postSchema);
