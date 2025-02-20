@@ -113,78 +113,81 @@ router.post('/login', async (req, res) => {
  // In the notifications route
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
-        //console.log("Notification route hit!");
+        console.log("Notification route hit!");
         const userId = req.user.userId;
-        //console.log("User ID from token:", userId);
+        console.log("User ID from token:", userId);
 
-        let message = "No new activity.";  // Default message
-        let postId = null;
-        let activityType = null; // Add a variable to track activity type ("comment" or "reply")
+        const notifications = []; // Array to store notifications
+        const limit = 5; // Limit the number of notifications to retrieve
 
         // 1. Find new replies to comments on *your* posts
-        const unreadReplyNotifications = await Comment.find({
+        const unreadReplyNotificationsOwnPost = await Comment.find({
             post: { $in: await Post.find({ author: userId }).distinct('_id') }, // Find comments related to your posts
-            author: { $ne: userId } // Ensure the comment author is not the same as the user
+            author: { $ne: userId }, // Ensure the comment author is not the same as the user
+            parentComment: { $ne: null } // Only replies
         })
         .sort({ createdAt: -1 })  // Sort by createdAt descending
-        .populate('post').populate('author', 'username').limit(1);
+        .populate('post').populate('author', 'username').limit(limit);
 
-        //console.log("unreadReplyNotifications:", unreadReplyNotifications);
-
-        // 2. Find all posts where the user is the author and find new comments on those posts
+        // 2. Find new comments on *your* posts
         const newPostComments = await Post.find({ author: userId })
         .sort({ createdAt: -1 })   // Sort by createdAt descending
-        .populate('comments').populate('author', 'username').limit(1);
+        .populate('comments').populate('author', 'username').limit(limit);
 
-        //console.log("newPostComments:", newPostComments);
+        // 3. Find new replies to your comments on *other* posts
+        const unreadReplyNotificationsOtherPost = await Comment.find({
+            parentComment: { $in: await Comment.find({ author: userId }).distinct('_id') },
+            author: { $ne: userId } // Ensure the comment author is not you
+        }).sort({ createdAt: -1 })
+        .populate({
+            path: 'parentComment',
+            populate: { path: 'post' }
+        })
+        .populate('author', 'username')
+        .limit(limit);
 
-        let latestActivity = null; // To store the latest activity
-        let latestActivityType = null;
 
-        if (unreadReplyNotifications.length > 0 && newPostComments.length > 0) {
-            // Compare the createdAt dates of the latest reply and the latest comment
-            if (unreadReplyNotifications[0].createdAt > newPostComments[0].createdAt) {
-                latestActivity = unreadReplyNotifications[0];
-                latestActivityType = "reply";
-            } else {
-                latestActivity = newPostComments[0];
-                latestActivityType = "comment";
-            }
-        } else if (unreadReplyNotifications.length > 0) {
-            latestActivity = unreadReplyNotifications[0];
-            latestActivityType = "reply";
-        } else if (newPostComments.length > 0) {
-            latestActivity = newPostComments[0];
-            latestActivityType = "comment";
-        }
+        // Process and structure the notifications
+        unreadReplyNotificationsOwnPost.forEach(reply => {
+            notifications.push({
+                message: `New reply by ${reply.author.username} on a comment in your post: ${reply.post.title}`,
+                postId: reply.post?._id || null,
+                activityType: "replyOwn"
+            });
+        });
 
-        if (latestActivity) {
-            if (latestActivityType === "reply") {
-                message = `New reply by ${latestActivity.author.username} on a comment in your post(非此帖，请自行查询相关留下评论的帖子): ${latestActivity.post.title}`; // More specific message
-                postId = latestActivity.post?._id || null;
-            } else if (latestActivityType === "comment") {
-                message = `New comment on your post: ${latestActivity.title} by ${latestActivity.author.username}`; // More specific message
-                postId = latestActivity._id || null;  // Use post's own ID here
-            }
+        newPostComments.forEach(post => {
+            notifications.push({
+                message: `New comment on your post: ${post.title} by ${post.author.username}`,
+                postId: post._id || null,
+                activityType: "comment"
+            });
+        });
 
-            activityType = latestActivityType; // Set activity type
+        unreadReplyNotificationsOtherPost.forEach(reply => {
+            notifications.push({
+                message: `New reply by ${reply.author.username} to your comment on post: ${reply.parentComment.post.title}`,
+                postId: reply.parentComment.post._id || null,
+                activityType: "replyOther"
+            });
+        });
 
-            if (!postId || !mongoose.Types.ObjectId.isValid(postId)) {
-                console.error("Invalid or Missing Post ID for Notification", { postId, activity: latestActivity });
-                postId = null;
-                message = "No new activity.";
-                activityType = null; // Reset activity type
-            }
+        // Sort notifications by creation date (most recent first)
+        notifications.sort((a, b) => b.createdAt - a.createdAt);
+
+        let message = "No new activity.";
+        if (notifications.length > 0) {
+            message = null; // clear "No new activity." message
         }
 
         const user = await User.findById(userId);
         const unreadNotifications = user.unreadNotifications;
-        //console.log("unreadNotifications from user:", unreadNotifications)
+        console.log("unreadNotifications from user:", unreadNotifications)
         res.json({
             unreadNotifications: unreadNotifications,
+            notifications: notifications.slice(0, limit), // Limit the number of notifications sent
             message: message,
-            postId: postId,
-            activityType: activityType // Include activity type in the response
+            //activityType: activityType // Include activity type in the response
         });
 
     } catch (error) {
