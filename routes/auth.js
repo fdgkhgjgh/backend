@@ -150,7 +150,7 @@ router.post('/login', async (req, res) => {
         // Process and structure the notifications
         unreadReplyNotificationsOwnPost.forEach(reply => {
             notifications.push({
-                message: `New reply by ${reply.author.username} on a comment in your post: ${reply.post.title}`,
+                message: `New reply(新回复) by ${reply.author.username} on a comment in your post: ${reply.post.title}`,
                 postId: reply.post?._id || null,
                 activityType: "replyOwn"
             });
@@ -158,7 +158,7 @@ router.post('/login', async (req, res) => {
 
         newPostComments.forEach(post => {
             notifications.push({
-                message: `New comment on your post: ${post.title} by ${post.author.username}`,
+                message: `New comment(新评论) on your post: ${post.title} by ${post.author.username}`,
                 postId: post._id || null,
                 activityType: "comment"
             });
@@ -166,7 +166,7 @@ router.post('/login', async (req, res) => {
 
         unreadReplyNotificationsOtherPost.forEach(reply => {
             notifications.push({
-                message: `New reply by ${reply.author.username} to your comment on post: ${reply.parentComment.post.title}`,
+                message: `New reply(新回复) by ${reply.author.username} to your comment on post: ${reply.parentComment.post.title}`,
                 postId: reply.parentComment.post._id || null,
                 activityType: "replyOther"
             });
