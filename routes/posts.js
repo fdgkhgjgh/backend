@@ -580,3 +580,49 @@ router.post('/:id/pin', authenticateToken, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+// Delete a reply (protected route - and check ownership)
+router.delete('/:postId/comments/:commentId/replies/:replyId', authenticateToken, async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.postId) ||
+            !mongoose.isValidObjectId(req.params.commentId) ||
+            !mongoose.isValidObjectId(req.params.replyId)) {
+            return res.status(400).json({ message: 'Invalid post, comment, or reply ID' });
+        }
+
+        const { postId, commentId, replyId } = req.params;
+
+        const post = await Post.findById(postId);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        const reply = await Comment.findById(replyId);
+        if (!reply) {
+            return res.status(404).json({ message: 'Reply not found' });
+        }
+
+        // Check if the current user is the author of the reply
+        if (reply.author.toString() !== req.user.userId) {
+            return res.status(403).json({ message: 'You are not authorized to delete this reply' });
+        }
+
+        // Remove the reply from the parent comment's replies array
+        comment.replies.pull(replyId);  // Remove the reply from the array
+        await comment.save();
+
+        // Delete the reply
+        await Comment.findByIdAndDelete(replyId);
+
+        res.json({ message: 'Reply deleted successfully' });
+
+    } catch (error) {
+        console.error('Error deleting reply:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
