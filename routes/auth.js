@@ -268,6 +268,8 @@ router.get('/profile/:userId', authenticateToken, async (req, res) => {
 async function processReplyOwnNotification(reply, notifications) {
     if (!reply || !reply.post) {
         console.warn("Skipping invalid replyOwn notification:", reply);
+        if (process.env.NODE_ENV !== 'production') { // <--- ADD THIS CONDITION
+        }
         return;
     }
     notifications.push({
@@ -280,6 +282,8 @@ async function processReplyOwnNotification(reply, notifications) {
 async function processCommentNotification(post, notifications) {
     if (!post) {
         console.warn("Skipping invalid comment notification:", post);
+        if (process.env.NODE_ENV !== 'production') { // <--- ADD THIS CONDITION
+        }
         return;
     }
     notifications.push({
@@ -291,7 +295,9 @@ async function processCommentNotification(post, notifications) {
 
 async function processReplyOtherNotification(reply, notifications) {
     if (!reply || !reply.parentComment || !reply.parentComment.post) {
+        if (process.env.NODE_ENV !== 'production') { // <--- ADD THIS CONDITION
         console.warn("Skipping invalid replyOther notification:", reply);
+        }
         return;
     }
     notifications.push({
