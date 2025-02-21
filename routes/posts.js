@@ -94,7 +94,7 @@ router.get('/:id', async (req, res) => {
             });
 
         if (!post) {
-            console.log(`Post with id ${req.params.id} not found`); // Log if post is not found
+            //console.log(`Post with id ${req.params.id} not found`); // Log if post is not found
             return res.status(404).json({ message: 'Post not found' });
         }
 
