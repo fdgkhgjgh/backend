@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 10000;
 
 // --- CORS Configuration ---
 const corsOptions = {
-    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://money666.us.kg', 'https://frontend-dke.pages.dev'],
+    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://mless.ggff.net', 'https://frontend-dke.pages.dev'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
