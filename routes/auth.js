@@ -113,9 +113,9 @@ router.post('/login', async (req, res) => {
  // In the notifications route
  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
-        console.log("Notification route hit!");
+        //console.log("Notification route hit!");
         const userId = req.user.userId;
-        console.log("User ID from token:", userId);
+        //console.log("User ID from token:", userId);
 
         const notifications = []; // Array to store notifications
         const limit = 5; // Limit the number of notifications to retrieve
@@ -170,7 +170,7 @@ router.post('/login', async (req, res) => {
 
         const user = await User.findById(userId);
         const unreadNotifications = user.unreadNotifications;
-        console.log("unreadNotifications from user:", unreadNotifications)
+        //console.log("unreadNotifications from user:", unreadNotifications)
         res.json({
             unreadNotifications: unreadNotifications,
             notifications: notifications.slice(0, limit), // Limit the number of notifications sent
@@ -272,7 +272,7 @@ async function processReplyOwnNotification(reply, notifications) {
         return;
     }
     notifications.push({
-        message: `New reply by ${reply.author?.username || 'Unknown'} on a comment in your post: ${reply.post.title}`,
+        message: `New reply(新回复) by ${reply.author?.username || 'Unknown'} on a comment in your post: ${reply.post.title}`,
         postId: reply.post?._id || null,
         activityType: "replyOwn"
     });
@@ -284,7 +284,7 @@ async function processCommentNotification(post, notifications) {
         return;
     }
     notifications.push({
-        message: `New comment on your post: ${post.title} by ${post.author?.username || 'Unknown'}`,
+        message: `New comment(新评论) on your post: ${post.title} by ${post.author?.username || 'Unknown'}`,
         postId: post._id || null,
         activityType: "comment"
     });
@@ -296,7 +296,7 @@ async function processReplyOtherNotification(reply, notifications) {
         return;
     }
     notifications.push({
-        message: `New reply by ${reply.author?.username || 'Unknown'} to your comment on post: ${reply.parentComment.post.title}`,
+        message: `New reply(新回复) by ${reply.author?.username || 'Unknown'} to your comment on post: ${reply.parentComment.post.title}`,
         postId: reply.parentComment.post._id || null,
         activityType: "replyOther"
     });
