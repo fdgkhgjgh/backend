@@ -141,36 +141,24 @@ router.post('/login', async (req, res) => {
         }).sort({ createdAt: -1 })
         .populate({
             path: 'parentComment',
-            populate: { path: 'post' }
+            populate: { path: 'post' } //  IMPORTANT:  Populate the 'post' field!
         })
         .populate('author', 'username')
         .limit(limit);
 
-
         // Process and structure the notifications
-        unreadReplyNotificationsOwnPost.forEach(reply => {
-            notifications.push({
-                message: `New reply(新回复) by ${reply.author.username} on a comment in your post: ${reply.post.title}`,
-                postId: reply.post?._id || null,
-                activityType: "replyOwn"
-            });
-        });
+        for (const reply of unreadReplyNotificationsOwnPost) {
+            await processReplyOwnNotification(reply, notifications);
+        }
 
-        newPostComments.forEach(post => {
-            notifications.push({
-                message: `New comment(新评论) on your post: ${post.title} by ${post.author.username}`,
-                postId: post._id || null,
-                activityType: "comment"
-            });
-        });
+        for (const post of newPostComments) {
+            await processCommentNotification(post, notifications);
+        }
 
-        unreadReplyNotificationsOtherPost.forEach(reply => {
-            notifications.push({
-                message: `New reply(新回复) by ${reply.author.username} to your comment on post: ${reply.parentComment.post.title}`,
-                postId: reply.parentComment.post._id || null,
-                activityType: "replyOther"
-            });
-        });
+        for (const reply of unreadReplyNotificationsOtherPost) {
+            await processReplyOtherNotification(reply, notifications);
+        }
+
 
         // Sort notifications by creation date (most recent first)
         notifications.sort((a, b) => b.createdAt - a.createdAt);
@@ -277,6 +265,43 @@ router.get('/profile/:userId', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch user profile', error: error.message });
     }
 });
+
+async function processReplyOwnNotification(reply, notifications) {
+    if (!reply || !reply.post) {
+        console.warn("Skipping invalid replyOwn notification:", reply);
+        return;
+    }
+    notifications.push({
+        message: `New reply by ${reply.author?.username || 'Unknown'} on a comment in your post: ${reply.post.title}`,
+        postId: reply.post?._id || null,
+        activityType: "replyOwn"
+    });
+}
+
+async function processCommentNotification(post, notifications) {
+    if (!post) {
+        console.warn("Skipping invalid comment notification:", post);
+        return;
+    }
+    notifications.push({
+        message: `New comment on your post: ${post.title} by ${post.author?.username || 'Unknown'}`,
+        postId: post._id || null,
+        activityType: "comment"
+    });
+}
+
+async function processReplyOtherNotification(reply, notifications) {
+    if (!reply || !reply.parentComment || !reply.parentComment.post) {
+        console.warn("Skipping invalid replyOther notification:", reply);
+        return;
+    }
+    notifications.push({
+        message: `New reply by ${reply.author?.username || 'Unknown'} to your comment on post: ${reply.parentComment.post.title}`,
+        postId: reply.parentComment.post._id || null,
+        activityType: "replyOther"
+    });
+}
+
   
   
   module.exports = router;
