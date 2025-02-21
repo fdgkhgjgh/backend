@@ -111,78 +111,77 @@ router.post('/login', async (req, res) => {
 });
 
  // In the notifications route
- router.get('/notifications', authenticateToken, async (req, res) => {
+  router.get('/notifications', authenticateToken, async (req, res) => {
     try {
-        //console.log("Notification route hit!");
-        const userId = req.user.userId;
-        //console.log("User ID from token:", userId);
-
-        const notifications = []; // Array to store notifications
-        const limit = 5; // Limit the number of notifications to retrieve
-
-        // 1. Find new replies to comments on *your* posts
-        const unreadReplyNotificationsOwnPost = await Comment.find({
-            post: { $in: await Post.find({ author: userId }).distinct('_id') }, // Find comments related to your posts
-            author: { $ne: userId }, // Ensure the comment author is not the same as the user
-            parentComment: { $ne: null } // Only replies
-        })
-        .sort({ createdAt: -1 })  // Sort by createdAt descending
-        .populate('post').populate('author', 'username').limit(limit);
-
-        // 2. Find new comments on *your* posts
-        const newPostComments = await Post.find({ author: userId })
-        .sort({ createdAt: -1 })   // Sort by createdAt descending
-        .populate('comments').populate('author', 'username').limit(limit);
-
-        // 3. Find new replies to your comments on *other* posts
-        const unreadReplyNotificationsOtherPost = await Comment.find({
-            parentComment: { $in: await Comment.find({ author: userId }).distinct('_id') },
-            author: { $ne: userId } // Ensure the comment author is not you
-        }).sort({ createdAt: -1 })
-        .populate({
-            path: 'parentComment',
-            populate: { path: 'post' } //  IMPORTANT:  Populate the 'post' field!
-        })
-        .populate('author', 'username')
-        .limit(limit);
-
-        // Process and structure the notifications
-        for (const reply of unreadReplyNotificationsOwnPost) {
-            await processReplyOwnNotification(reply, notifications);
-        }
-
-        for (const post of newPostComments) {
-            await processCommentNotification(post, notifications);
-        }
-
-        for (const reply of unreadReplyNotificationsOtherPost) {
-            await processReplyOtherNotification(reply, notifications);
-        }
-
-
-        // Sort notifications by creation date (most recent first)
-        notifications.sort((a, b) => b.createdAt - a.createdAt);
-
-        let message = "No new activity.";
-        if (notifications.length > 0) {
-            message = null; // clear "No new activity." message
-        }
-
-        const user = await User.findById(userId);
-        const unreadNotifications = user.unreadNotifications;
-        //console.log("unreadNotifications from user:", unreadNotifications)
-        res.json({
-            unreadNotifications: unreadNotifications,
-            notifications: notifications.slice(0, limit), // Limit the number of notifications sent
-            message: message,
-            //activityType: activityType // Include activity type in the response
-        });
-
+     //console.log("Notification route hit!");
+     const userId = req.user.userId;
+     //console.log("User ID from token:", userId);
+  
+     const notifications = []; // Array to store notifications
+     const limit = 5; // Limit the number of notifications to retrieve
+  
+     // 1. Find new replies to comments on *your* posts
+     const unreadReplyNotificationsOwnPost = await Comment.find({
+      post: { $in: await Post.find({ author: userId }).distinct('_id') }, // Find comments related to your posts
+      author: { $ne: userId }, // Ensure the comment author is not the same as the user
+      parentComment: { $ne: null } // Only replies
+     })
+     .sort({ createdAt: -1 }) // Sort by createdAt descending
+     .populate('post').populate('author', 'username').limit(limit);
+  
+     // 2. Find new comments on *your* posts
+     const newPostComments = await Post.find({ author: userId })
+     .sort({ createdAt: -1 })  // Sort by createdAt descending
+     .populate('comments').populate('author', 'username').limit(limit);
+  
+     // 3. Find new replies to your comments on *other* posts
+     const unreadReplyNotificationsOtherPost = await Comment.find({
+      parentComment: { $in: await Comment.find({ author: userId }).distinct('_id') },
+      author: { $ne: userId } // Ensure the comment author is not you
+     }).sort({ createdAt: -1 })
+     .populate({
+      path: 'parentComment',
+      populate: { path: 'post' } // IMPORTANT: Populate the 'post' field!
+     })
+     .populate('author', 'username')
+     .limit(limit);
+  
+     // Process and structure the notifications
+     for (const reply of unreadReplyNotificationsOwnPost) {
+      await processReplyOwnNotification(reply, notifications);
+     }
+  
+     for (const post of newPostComments) {
+      await processCommentNotification(post, notifications);
+     }
+  
+     for (const reply of unreadReplyNotificationsOtherPost) {
+      await processReplyOtherNotification(reply, notifications);
+     }
+  
+  
+     // Sort notifications by creation date (most recent first)
+     notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  
+     let message = "No new activity.";
+     if (notifications.length > 0) {
+      message = null; // clear "No new activity." message
+     }
+  
+     const user = await User.findById(userId);
+     const unreadNotifications = user.unreadNotifications;
+     //console.log("unreadNotifications from user:", unreadNotifications)
+     res.json({
+      unreadNotifications: unreadNotifications,
+      notifications: notifications.slice(0, limit), // Limit the number of notifications sent
+      message: message,
+     });
+  
     } catch (error) {
-        console.error("Error fetching notifications with details:", error);
-        res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
+     console.error("Error fetching notifications with details:", error);
+     res.status(500).json({ message: "Failed to fetch notifications", error: error.message });
     }
-});
+   });
 
 // Reset unread notifications count (when user clicks profile)
 router.post('/reset-notifications', authenticateToken, async (req, res) => {
@@ -274,7 +273,7 @@ async function processReplyOwnNotification(reply, notifications) {
     notifications.push({
         message: `New reply(新回复) by ${reply.author?.username || 'Unknown'} on a comment in your post: ${reply.post.title}`,
         postId: reply.post?._id || null,
-        activityType: "replyOwn"
+        createdAt: reply.createdAt || reply.post?.createdAt || new Date()
     });
 }
 
@@ -286,7 +285,7 @@ async function processCommentNotification(post, notifications) {
     notifications.push({
         message: `New comment(新评论) on your post: ${post.title} by ${post.author?.username || 'Unknown'}`,
         postId: post._id || null,
-        activityType: "comment"
+        createdAt: post.createdAt || new Date()
     });
 }
 
@@ -298,7 +297,7 @@ async function processReplyOtherNotification(reply, notifications) {
     notifications.push({
         message: `New reply(新回复) by ${reply.author?.username || 'Unknown'} to your comment on post: ${reply.parentComment.post.title}`,
         postId: reply.parentComment.post._id || null,
-        activityType: "replyOther"
+        createdAt: reply.createdAt || reply.parentComment.post.createdAt || new Date()
     });
 }
 
