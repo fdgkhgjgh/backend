@@ -223,7 +223,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 
 // Add a comment to a post (protected route)
-router.post('/:id/comments', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/:id/comments', authenticateToken, upload.array('files', 5), async (req, res) => { // Modified line
     try {
         if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
@@ -238,18 +238,20 @@ router.post('/:id/comments', authenticateToken, upload.single('file'), async (re
             return res.status(400).json({ message: 'Comment text is required' });
         }
 
-        let imageUrl = undefined;
-        let videoUrl = undefined;
+         const imageUrls = [];
+         const videoUrls = [];
 
-        if (req.file) {
-            if (req.file.mimetype.startsWith('image/')) {
-                imageUrl = req.file.path;
-            } else if (req.file.mimetype.startsWith('video/')) {
-                videoUrl = req.file.path;
-            } else {
-                return res.status(400).json({ message: 'Invalid file type. Only images and videos are allowed.' });
-            }
+        if (req.files && req.files.length > 0) {
+            req.files.forEach(file => {
+                if (file.mimetype.startsWith('image/')) {
+                    imageUrls.push(file.path);
+                } else if (file.mimetype.startsWith('video/')) {
+                    videoUrls.push(file.path);
+                }
+            });
         }
+         let imageUrl = imageUrls.length > 0 ? imageUrls[0] : undefined;  // take only the first one to not break the model
+         let videoUrl = videoUrls.length > 0 ? videoUrls[0] : undefined;   // take only the first one to not break the model
 
         const newComment = new Comment({
             author: req.user.userId,
