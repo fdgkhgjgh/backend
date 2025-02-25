@@ -250,14 +250,14 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
                 }
             });
         }
-         let imageUrl = imageUrls.length > 0 ? imageUrls[0] : undefined;  // take only the first one to not break the model
-         let videoUrl = videoUrls.length > 0 ? videoUrls[0] : undefined;   // take only the first one to not break the model
+         //let imageUrl = imageUrls.length > 0 ? imageUrls[0] : undefined;  // take only the first one to not break the model
+         //let videoUrl = videoUrls.length > 0 ? videoUrls[0] : undefined;   // take only the first one to not break the model
 
         const newComment = new Comment({
             author: req.user.userId,
             text: text,
-            imageUrl: imageUrl,
-            videoUrl: videoUrl,
+            imageUrls: imageUrls,
+            videoUrls: videoUrls,
             post: req.params.id
         });
         await newComment.save();
