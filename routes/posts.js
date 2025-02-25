@@ -234,6 +234,7 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
         }
 
         const { text } = req.body;
+        console.log("req.files:", req.files);
         if (!text) {
             return res.status(400).json({ message: 'Comment text is required' });
         }
