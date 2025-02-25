@@ -223,7 +223,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
 
 // Add a comment to a post (protected route)
-router.post('/:id/comments', authenticateToken, upload.array('files', 5), async (req, res) => { // Modified line
+router.post('/:id/comments', authenticateToken, upload.array('files', 5), async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) {
             return res.status(400).json({ message: 'Invalid post ID' });
@@ -237,16 +237,16 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
         if (!text) {
             return res.status(400).json({ message: 'Comment text is required' });
         }
-        let imageUrl = undefined;
-        let videoUrl = undefined;
+
+        const imageUrls = [];
+        const videoUrls = [];
 
         if (req.files && req.files.length > 0) {
-           console.log(req.files);  // <---- ADD THIS LINE
             req.files.forEach(file => {
                 if (file.mimetype.startsWith('image/')) {
-                    imageUrl = file.path;
+                    imageUrls.push(file.path);
                 } else if (file.mimetype.startsWith('video/')) {
-                    videoUrl = file.path;
+                    videoUrls.push(file.path);
                 }
             });
         }
@@ -254,8 +254,8 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
         const newComment = new Comment({
             author: req.user.userId,
             text: text,
-            imageUrl: imageUrl,
-            videoUrl: videoUrl,
+            imageUrls: imageUrls,
+            videoUrls: videoUrls,
             post: req.params.id
         });
         await newComment.save();
