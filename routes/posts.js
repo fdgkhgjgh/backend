@@ -237,27 +237,24 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
         if (!text) {
             return res.status(400).json({ message: 'Comment text is required' });
         }
-
-         const imageUrls = [];
-         const videoUrls = [];
+        let imageUrl = undefined;
+        let videoUrl = undefined;
 
         if (req.files && req.files.length > 0) {
             req.files.forEach(file => {
                 if (file.mimetype.startsWith('image/')) {
-                    imageUrls.push(file.path);
+                    imageUrl = file.path;
                 } else if (file.mimetype.startsWith('video/')) {
-                    videoUrls.push(file.path);
+                    videoUrl = file.path;
                 }
             });
         }
-         //let imageUrl = imageUrls.length > 0 ? imageUrls[0] : undefined;  // take only the first one to not break the model
-         //let videoUrl = videoUrls.length > 0 ? videoUrls[0] : undefined;   // take only the first one to not break the model
 
         const newComment = new Comment({
             author: req.user.userId,
             text: text,
-            imageUrls: imageUrls,
-            videoUrls: videoUrls,
+            imageUrl: imageUrl,
+            videoUrl: videoUrl,
             post: req.params.id
         });
         await newComment.save();
