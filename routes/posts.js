@@ -241,6 +241,7 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
         let videoUrl = undefined;
 
         if (req.files && req.files.length > 0) {
+           console.log(req.files);  // <---- ADD THIS LINE
             req.files.forEach(file => {
                 if (file.mimetype.startsWith('image/')) {
                     imageUrl = file.path;
