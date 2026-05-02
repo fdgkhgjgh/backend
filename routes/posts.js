@@ -427,6 +427,54 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
     }
 })
 
+// Download a media file from a post (proxies through backend to force download)
+router.get('/:id/download', async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Get the media URL from query param: ?url=<cloudinary_url>
+        const mediaUrl = req.query.url;
+        if (!mediaUrl) {
+            return res.status(400).json({ message: 'Missing url query parameter' });
+        }
+
+        // Security check: only allow URLs that belong to this post's media
+        const allMediaUrls = [
+            ...(post.imageUrls || []),
+            ...(post.videoUrls || [])
+        ];
+        if (!allMediaUrls.includes(mediaUrl)) {
+            return res.status(403).json({ message: 'Media URL does not belong to this post' });
+        }
+
+        // Fetch the file from Cloudinary and pipe it to the client
+        const https = require('https');
+        const url = new URL(mediaUrl);
+        const filename = url.pathname.split('/').pop() || `download-${Date.now()}`;
+
+        https.get(mediaUrl, (cloudinaryRes) => {
+            const contentType = cloudinaryRes.headers['content-type'] || 'application/octet-stream';
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            res.setHeader('Content-Type', contentType);
+            cloudinaryRes.pipe(res);
+        }).on('error', (err) => {
+            console.error('Download proxy error:', err);
+            res.status(500).json({ message: 'Failed to download media' });
+        });
+
+    } catch (error) {
+        console.error('Download route error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
 module.exports = router;
 
 //Get user all posts.
