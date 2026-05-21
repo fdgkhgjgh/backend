@@ -332,6 +332,10 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
             await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
         }
 
+        if (replyToUser && replyToUser.toString() !== req.user.userId && replyToUser.toString() !== parentComment.author.toString()) {
+    await User.findByIdAndUpdate(replyToUser, { $inc: { unreadNotifications: 1 } });
+}
+
         // 🌟 POPULATE BOTH THE AUTHOR AND THE REPLIED USER
         const populatedComment = await Comment.findById(newComment._id)
             .populate('author', 'username')
