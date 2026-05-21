@@ -298,19 +298,13 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
         }
 
         const post = await Post.findById(req.params.postId);
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
+        if (!post) return res.status(404).json({ message: 'Post not found' });
 
         const parentComment = await Comment.findById(req.params.commentId);
-        if (!parentComment) {
-            return res.status(404).json({ message: 'Parent comment not found' });
-        }
+        if (!parentComment) return res.status(404).json({ message: 'Parent comment not found' });
 
-        const { text } = req.body;
-        if (!text) {
-            return res.status(400).json({ message: 'Reply text is required' });
-        }
+        const { text, replyToUser } = req.body; // 🌟 CAPTURE replyToUser FROM THE BODY
+        if (!text) return res.status(400).json({ message: 'Reply text is required' });
 
         const newComment = new Comment({
             author: req.user.userId,
@@ -318,6 +312,7 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
             imageUrl: req.file ? req.file.path : undefined,
             post: req.params.postId,
             parentComment: req.params.commentId,
+            replyToUser: replyToUser || null // 🌟 SAVE IT HERE
         });
 
         await newComment.save();
@@ -325,34 +320,54 @@ router.post('/:postId/comments/:commentId/replies', authenticateToken, upload.si
         parentComment.replies.push(newComment._id);
         await parentComment.save();
 
-        // ***UPDATE LAST ACTIVITY HERE***
         post.lastActivity = Date.now();
         await post.save();
-
-         // *** UPDATE totalComments HERE ***
-         await updateTotalComments(req.params.postId); // <--- ADD THIS LINE
+        await updateTotalComments(req.params.postId); 
         
-        // Increment notifications for both comment author AND post author
-        // 1. Increment for comment author (original code)
-        if (parentComment.author.toString() !== req.user.userId) {  // Make sure not to notify the user replying to themselves
+        if (parentComment.author.toString() !== req.user.userId) { 
             await User.findByIdAndUpdate(parentComment.author._id, { $inc: { unreadNotifications: 1 } });
         }
 
-        // 2. Increment for post author (new code)
         if (post.author.toString() !== req.user.userId && post.author.toString() !== parentComment.author.toString()) {
             await User.findByIdAndUpdate(post.author._id, { $inc: { unreadNotifications: 1 } });
         }
 
-        // Populate the author.
+        // 🌟 POPULATE BOTH THE AUTHOR AND THE REPLIED USER
         const populatedComment = await Comment.findById(newComment._id)
             .populate('author', 'username')
+            .populate('replyToUser', 'username');
 
         res.status(201).json(populatedComment);
-
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
+// 2. UPDATE THE GET REPLIES ROUTE 
+router.get('/comments/:commentId/replies', async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.commentId)) {
+            return res.status(400).json({ message: 'Invalid comment ID' });
+        }
+
+        const comment = await Comment.findById(req.params.commentId);
+        if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+        // 🌟 POPULATE THE replyToUser HERE AS WELL
+        await comment.populate({
+            path: 'replies',
+            populate: [
+                { path: 'author', select: 'username profilePictureUrl' },
+                { path: 'replyToUser', select: 'username' } // <--- ADD THIS
+            ]
+        });
+
+        res.json(comment.replies);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 // Get replies to a comment
 router.get('/comments/:commentId/replies', async (req, res) => {
