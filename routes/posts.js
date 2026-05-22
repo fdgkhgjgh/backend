@@ -234,9 +234,6 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
         }
 
         const { text } = req.body;
-        if (!text) {
-            return res.status(400).json({ message: 'Comment text is required' });
-        }
 
         const imageUrls = [];
         const videoUrls = [];
@@ -253,7 +250,7 @@ router.post('/:id/comments', authenticateToken, upload.array('files', 5), async 
 
         const newComment = new Comment({
             author: req.user.userId,
-            text: text,
+            text: text || '',
             imageUrls: imageUrls,
             videoUrls: videoUrls,
             post: req.params.id
