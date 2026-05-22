@@ -8,10 +8,12 @@ const postSchema = new mongoose.Schema({
          maxlength: 45 // Add the maxlength validator
      },
     content: {
-         type: String,
-         required: true,
-         maxlength: 1000 // Add the maxlength validator
-     },
+         content: {
+     type: String,
+     required: false,
+     default: '',
+     maxlength: 1000
+ },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     imageUrls: [{ type: String }],
     videoUrls: [{ type: String }],
