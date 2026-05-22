@@ -131,7 +131,7 @@ router.post('/', authenticateToken, upload.array('files', 5), async (req, res) =
 
         const newPost = new Post({
             title,
-            content,
+            content: content || "",
             author: req.user.userId, // Use userId from the JWT payload
             imageUrls: imageUrls, // Store the array of image URLs
             videoUrls: videoUrls,  //Store the array of video URLs
