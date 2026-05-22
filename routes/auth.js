@@ -102,6 +102,29 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ message: 'Login failed', error: error.message }); // Send error response
     }
 });
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { username, newPassword } = req.body;
+
+        if (!username || !newPassword) {
+            return res.status(400).json({ message: 'Username and new password are required' });
+        }
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.password = newPassword; // pre-save hook will hash it automatically
+        await user.save();
+
+        res.json({ message: 'Password reset successful' });
+    } catch (error) {
+        res.status(500).json({ message: 'Reset failed', error: error.message });
+    }
+});
   
   
   // Logout -  Client-side handles token removal
