@@ -112,8 +112,8 @@ router.post('/', authenticateToken, upload.array('files', 5), async (req, res) =
 
     try {
         const { title, content } = req.body;
-        if (!title || !content) {
-            return res.status(400).json({ message: "Title and content are required." })
+        if (!title) {
+            return res.status(400).json({ message: "Title is required." })
         }
 
         const imageUrls = [];
