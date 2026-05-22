@@ -106,18 +106,20 @@ router.post('/login', async (req, res) => {
 // Reset password
 router.post('/reset-password', async (req, res) => {
     try {
-        const { username, newPassword } = req.body;
-
-        if (!username || !newPassword) {
-            return res.status(400).json({ message: 'Username and new password are required' });
-        }
+        const { username, oldPassword, newPassword } = req.body;
 
         const user = await User.findOne({ username });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.password = newPassword; // pre-save hook will hash it automatically
+        // ✅ Verify old password first
+        const isMatch = await user.comparePassword(oldPassword);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Old password is incorrect' });
+        }
+
+        user.password = newPassword;
         await user.save();
 
         res.json({ message: 'Password reset successful' });
