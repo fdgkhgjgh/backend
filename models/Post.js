@@ -3,29 +3,31 @@ const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema({
     title: {
-         type: String,
-         required: true,
-         maxlength: 45 // Add the maxlength validator
-     },
+        type: String,
+        required: true,
+        maxlength: 45
+    },
     content: {
-         content: {
-     type: String,
-     required: false,
-     default: '',
-     maxlength: 1000
- },
-    author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        type: String,
+        required: false, // 🌟 This makes the text box option completely optional
+        maxlength: 1000 
+    },
+    author: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true 
+    },
     imageUrls: [{ type: String }],
     videoUrls: [{ type: String }],
     upvotes: { type: Number, default: 0 },
     downvotes: { type: Number, default: 0 },
     upvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
     downvotedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
-    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }], // Change to reference Comment model
-    lastActivity: { type: Date, default: Date.now },// New field!
-    pinned: { type: Boolean, default: false }, // New field!
-    totalComments: { type: Number, default: 0 } // New field!
-}, { timestamps: true });
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }], 
+    lastActivity: { type: Date, default: Date.now },
+    pinned: { type: Boolean, default: false }, 
+    totalComments: { type: Number, default: 0 } 
+}, { timestamps: true }); // 🌟 Timestamps block now aligns perfectly!
 
 const Post = mongoose.model('Post', postSchema);
 module.exports = Post;
