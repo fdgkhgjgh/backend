@@ -50,6 +50,8 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-app.listen(PORT, () => { // ✅ Use `server.listen` instead of `app.listen`
-    console.log(`Server is running on port ${PORT}`);
+const listenPort = process.env.PORT || 10000;
+
+app.listen(listenPort, '0.0.0.0', () => {
+    console.log(`Server is strictly running on port ${listenPort}`);
 });
