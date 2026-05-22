@@ -12,11 +12,17 @@ const PORT = process.env.PORT || 10000;
 
 // --- CORS Configuration ---
 const corsOptions = {
-    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['http://mless.cc.cd', 'https://frontend-dke.pages.dev'],
+    // 🌟 Added both https:// and http:// for mless.cc.cd so it never gets blocked
+    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : [
+        'https://mless.cc.cd', 
+        'http://mless.cc.cd', 
+        'https://frontend-dke.pages.dev'
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 };
+
 
 app.use(cors(corsOptions)); // Use the configured CORS options
 
