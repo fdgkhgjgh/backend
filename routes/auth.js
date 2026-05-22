@@ -78,7 +78,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Username and password are required' });
         }
 
-        const user = await User.findOne({ username });
+        const user = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
         //console.log('Found user:', user); // ADDED
 
         if (!user) {
