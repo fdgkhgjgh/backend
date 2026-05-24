@@ -13,7 +13,7 @@ const authenticateToken = require('../middleware/auth');
 
 // Get all posts (with pagination)
 router.get('/', async (req, res) => {
-    const { page = 1, limit = 8 } = req.query; // Default page=1, limit=8
+    const { page = 1, limit = 5 } = req.query; // Default page=1, limit=8
     const parsedLimit = parseInt(limit); // Ensure limit is a number
     const parsedPage = parseInt(page);
 
