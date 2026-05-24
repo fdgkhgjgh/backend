@@ -337,6 +337,7 @@ router.post('/save-post/:postId', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user.savedPosts) user.savedPosts = [];
 
         const postId = req.params.postId;
         const alreadySaved = user.savedPosts.includes(postId);
