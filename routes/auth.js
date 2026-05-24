@@ -344,14 +344,14 @@ router.post('/save-post/:postId', authenticateToken, async (req, res) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         const savedPosts = user.savedPosts || [];
-        const alreadySaved = savedPosts.map(id => id.toString()).includes(postId);
+        const alreadySaved = savedPosts.map(id => id.toString()).includes(postId.toString());
 
         if (alreadySaved) {
-            await User.findByIdAndUpdate(req.user.userId, {
-                $pull: { savedPosts: new mongoose.Types.ObjectId(postId) }
-            });
-            return res.json({ message: 'unsaved', saved: false });
-        } else {
+    await User.findByIdAndUpdate(req.user.userId, {
+        $pull: { savedPosts: new mongoose.Types.ObjectId(postId.toString()) }
+    });
+    return res.json({ message: 'unsaved', saved: false });
+} else {
             await User.findByIdAndUpdate(req.user.userId, {
                 $addToSet: { savedPosts: new mongoose.Types.ObjectId(postId) }
             });
