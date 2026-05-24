@@ -335,21 +335,26 @@ async function processReplyOtherNotification(reply, notifications) {
 // Save/unsave a post
 router.post('/save-post/:postId', authenticateToken, async (req, res) => {
     try {
+        const postId = req.params.postId;
+        if (!mongoose.isValidObjectId(postId)) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+
         const user = await User.findById(req.user.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (!user.savedPosts) user.savedPosts = [];
-
-        const postId = req.params.postId;
-        const alreadySaved = user.savedPosts.map(id => id.toString()).includes(postId);
+        const savedPosts = user.savedPosts || [];
+        const alreadySaved = savedPosts.map(id => id.toString()).includes(postId);
 
         if (alreadySaved) {
-            user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
-            await user.save();
+            await User.findByIdAndUpdate(req.user.userId, {
+                $pull: { savedPosts: new mongoose.Types.ObjectId(postId) }
+            });
             return res.json({ message: 'unsaved', saved: false });
         } else {
-            user.savedPosts.push(postId);
-            await user.save();
+            await User.findByIdAndUpdate(req.user.userId, {
+                $addToSet: { savedPosts: new mongoose.Types.ObjectId(postId) }
+            });
             return res.json({ message: 'saved', saved: true });
         }
     } catch (error) {
