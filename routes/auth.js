@@ -332,19 +332,16 @@ async function processReplyOtherNotification(reply, notifications) {
     });
 }
 
-// Save a post
-router.get('/saved-posts', authenticateToken, async (req, res) => {
+// Save/unsave a post
+router.post('/save-post/:postId', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId).populate('savedPosts');
+        const user = await User.findById(req.user.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
-        return res.status(200).json(user.savedPosts || []);
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-});
+
+        if (!user.savedPosts) user.savedPosts = [];
 
         const postId = req.params.postId;
-        const alreadySaved = user.savedPosts.includes(postId);
+        const alreadySaved = user.savedPosts.map(id => id.toString()).includes(postId);
 
         if (alreadySaved) {
             user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
@@ -365,8 +362,6 @@ router.get('/saved-posts', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).populate('savedPosts');
         if (!user) return res.status(404).json({ message: 'User not found' });
-        
-        // ✅ return empty array if savedPosts doesn't exist
         res.json(user.savedPosts || []);
     } catch (error) {
         res.status(500).json({ message: error.message });
