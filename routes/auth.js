@@ -335,19 +335,11 @@ async function processReplyOtherNotification(reply, notifications) {
 // Save a post
 router.get('/saved-posts', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.userId);
-        console.log('user found:', user?.username);
-        console.log('savedPosts:', user?.savedPosts);
-        
+        const user = await User.findById(req.user.userId).populate('savedPosts');
         if (!user) return res.status(404).json({ message: 'User not found' });
-        
-        const populated = await user.populate('savedPosts');
-        console.log('populated:', populated.savedPosts);
-        
-        res.json(populated.savedPosts || []);
+        return res.status(200).json(user.savedPosts || []);
     } catch (error) {
-        console.error('saved posts error:', error);
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
 });
 
