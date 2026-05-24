@@ -332,6 +332,39 @@ async function processReplyOtherNotification(reply, notifications) {
     });
 }
 
+// Save a post
+router.post('/save-post/:postId', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const postId = req.params.postId;
+        const alreadySaved = user.savedPosts.includes(postId);
+
+        if (alreadySaved) {
+            user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
+            await user.save();
+            return res.json({ message: 'unsaved', saved: false });
+        } else {
+            user.savedPosts.push(postId);
+            await user.save();
+            return res.json({ message: 'saved', saved: true });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get saved posts
+router.get('/saved-posts', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).populate('savedPosts');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json(user.savedPosts);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
   
   
   module.exports = router;
