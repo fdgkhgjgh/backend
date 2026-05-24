@@ -95,7 +95,7 @@ router.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '999d' });
-        res.status(200).json({ message: 'Login successful', token, userId: user._id, username: user.username }); // MUST have username here
+        res.status(200).json({ message: '登录成功Login successful', token, userId: user._id, username: user.username, profilePictureUrl: user.profilePictureUrl || '' });
 
     } catch (error) {
         console.error('Login failed:', error); // This should log the error to your terminal
