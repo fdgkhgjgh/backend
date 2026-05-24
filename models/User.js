@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   profilePictureUrl: { type: String, default: null },
   unreadNotifications: { type: Number, default: 0 }, // New field for unread responses
   pinnedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }] // New field!
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }]
 }, { timestamps: true });
 savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }]
 
