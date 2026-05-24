@@ -361,7 +361,9 @@ router.get('/saved-posts', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).populate('savedPosts');
         if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json(user.savedPosts);
+        
+        // ✅ return empty array if savedPosts doesn't exist
+        res.json(user.savedPosts || []);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
