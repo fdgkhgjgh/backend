@@ -7,8 +7,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   profilePictureUrl: { type: String, default: null },
   unreadNotifications: { type: Number, default: 0 }, // New field for unread responses
-  pinnedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }] // New field!
-  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }]
+  pinnedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }], // New field!
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
 }, { timestamps: true });
 savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }]
 
