@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   unreadNotifications: { type: Number, default: 0 }, // New field for unread responses
   pinnedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }] // New field!
 }, { timestamps: true });
+savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }]
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
