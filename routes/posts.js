@@ -47,6 +47,46 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Search posts by title, content, or author
+router.get('/search', async (req, res) => {
+    try {
+        const { q, page = 1, limit = 5 } = req.query;
+        if (!q || q.trim() === '') {
+            return res.status(400).json({ message: 'Search query is required' });
+        }
+
+        const parsedPage = parseInt(page);
+        const parsedLimit = parseInt(limit);
+        const skip = (parsedPage - 1) * parsedLimit;
+        const searchRegex = new RegExp(q.trim(), 'i'); // case insensitive
+
+        // Find matching users first for author search
+        const matchingUsers = await User.find({ username: searchRegex }).select('_id');
+        const userIds = matchingUsers.map(u => u._id);
+
+        const query = {
+            $or: [
+                { title: searchRegex },
+                { content: searchRegex },
+                { author: { $in: userIds } }
+            ]
+        };
+
+        const posts = await Post.find(query)
+            .sort({ lastActivity: -1 })
+            .populate('author', 'username')
+            .skip(skip)
+            .limit(parsedLimit);
+
+        const totalPosts = await Post.countDocuments(query);
+        const totalPages = Math.ceil(totalPosts / parsedLimit);
+
+        res.json({ posts, totalPages, currentPage: parsedPage, totalPosts });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // --- Helper function to update total comments count on a post
 async function updateTotalComments(postId) {
     try {
