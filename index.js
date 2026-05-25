@@ -18,13 +18,14 @@ const corsOptions = {
         'http://mless.cc.cd', 
         'https://frontend-dke.pages.dev'
     ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 };
 
 
 app.use(cors(corsOptions)); // Use the configured CORS options
+app.options('*', cors(corsOptions)); // ✅ Handle preflight requests
 
 // Middleware
 app.use(express.json()); // Parse JSON request bodies
