@@ -372,6 +372,16 @@ router.get('/saved-posts', authenticateToken, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+// Get all users (for DM user list)
+router.get('/users', authenticateToken, async (req, res) => {
+    try {
+        const users = await User.find({}, '_id username profilePictureUrl');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
   
   
   module.exports = router;
