@@ -377,7 +377,7 @@ router.get('/saved-posts', authenticateToken, async (req, res) => {
 router.get('/users', authenticateToken, async (req, res) => {
     try {
         const users = await User.find({}, '_id username profilePictureUrl');
-        res.json(users);
+        res.json(users); // ✅ must return array directly
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
