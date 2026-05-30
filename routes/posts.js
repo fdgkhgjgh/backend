@@ -222,6 +222,7 @@ if (req.files && req.files.length > 0) {
     post.videoUrls = videoUrls;
 }
 // If no new files, keep existing media
+        post.lastActivity = new Date();
         post.editedAt = new Date();
 
         const updatedPost = await post.save();
