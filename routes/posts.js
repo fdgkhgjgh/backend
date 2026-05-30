@@ -216,8 +216,12 @@ router.put('/:id', authenticateToken, upload.array('files', 5), async (req, res)
             });
         }
 
-        post.imageUrls = imageUrls;
-        post.videoUrls = videoUrls;
+        // ✅ Only update media if new files were uploaded
+if (req.files && req.files.length > 0) {
+    post.imageUrls = imageUrls;
+    post.videoUrls = videoUrls;
+}
+// If no new files, keep existing media
         post.editedAt = new Date();
 
         const updatedPost = await post.save();
