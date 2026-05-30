@@ -27,6 +27,7 @@ const postSchema = new mongoose.Schema({
     lastActivity: { type: Date, default: Date.now },
     pinned: { type: Boolean, default: false }, 
     totalComments: { type: Number, default: 0 } 
+    editedAt: { type: Date, default: null }
 }, { timestamps: true }); // 🌟 Timestamps block now aligns perfectly!
 
 const Post = mongoose.model('Post', postSchema);
