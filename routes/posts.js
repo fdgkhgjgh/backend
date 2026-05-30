@@ -217,7 +217,8 @@ router.put('/:id', authenticateToken, upload.array('files', 5), async (req, res)
         }
 
         post.imageUrls = imageUrls;
-        post.videoUrls = videoUrls
+        post.videoUrls = videoUrls;
+        post.editedAt = new Date();
 
         const updatedPost = await post.save();
         res.status(200).json(updatedPost);
