@@ -373,29 +373,6 @@ router.get('/saved-posts', authenticateToken, async (req, res) => {
     }
 });
 
-// Passport visa data proxy
-router.get('/visa/:countryCode', async (req, res) => {
-    try {
-        const code = req.params.countryCode.toLowerCase();
-        const response = await fetch(`https://www.passportindex.org/comparebyPassport.php?p1=${code}&fl=&s=yes`);
-        const html = await response.text();
-        
-        // Parse the HTML to extract visa counts
-        const freeMatch = html.match(/Visa Free[^0-9]*(\d+)/i);
-        const evoaMatch = html.match(/Visa on Arrival[^0-9]*(\d+)/i);
-        const evisaMatch = html.match(/eVisa[^0-9]*(\d+)/i);
-        const requiredMatch = html.match(/Visa Required[^0-9]*(\d+)/i);
-
-        res.json({
-            free: freeMatch ? parseInt(freeMatch[1]) : 0,
-            voa: evoaMatch ? parseInt(evoaMatch[1]) : 0,
-            evisa: evisaMatch ? parseInt(evisaMatch[1]) : 0,
-            required: requiredMatch ? parseInt(requiredMatch[1]) : 0
-        });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
 
 router.get('/visa-debug/:countryCode', async (req, res) => {
     try {
