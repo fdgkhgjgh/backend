@@ -374,18 +374,6 @@ router.get('/saved-posts', authenticateToken, async (req, res) => {
 });
 
 
-router.get('/visa-debug/:countryCode', async (req, res) => {
-    try {
-        const code = req.params.countryCode.toLowerCase();
-        const response = await fetch(`https://www.passportindex.org/comparebyPassport.php?p1=${code}&fl=&s=yes`);
-        const html = await response.text();
-        // Return first 2000 chars to see structure
-        res.send(html.substring(0, 2000));
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
 
 
 // Get all users (for DM user list)
