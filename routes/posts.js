@@ -489,7 +489,21 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
     }
 })
 
-// Download a media file from a post (proxies through backend to force download)
+// ==========================================
+// 1. 在路由上方初始化 R2 客户端（确保环境变量可用）
+// ==========================================
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+
+const r2Client = new S3Client({
+    region: 'auto',
+    endpoint: `https://1f4ecb5c1d43ebcdd818fe26e5d8d02f.r2.cloudflarestorage.com`,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
+    }
+});
+
+// 2. 完美的下载代理路由
 router.get('/:id/download', async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) {
@@ -501,7 +515,7 @@ router.get('/:id/download', async (req, res) => {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Get the media URL from query param: ?url=<cloudinary_url>
+        // Get the media URL from query param
         const mediaUrl = req.query.url;
         if (!mediaUrl) {
             return res.status(400).json({ message: 'Missing url query parameter' });
@@ -516,20 +530,40 @@ router.get('/:id/download', async (req, res) => {
             return res.status(403).json({ message: 'Media URL does not belong to this post' });
         }
 
-        // Fetch the file from Cloudinary and pipe it to the client
-        const https = require('https');
         const url = new URL(mediaUrl);
         const filename = url.pathname.split('/').pop() || `download-${Date.now()}`;
 
-        https.get(mediaUrl, (cloudinaryRes) => {
-            const contentType = cloudinaryRes.headers['content-type'] || 'application/octet-stream';
+        // 判断该文件是 R2 视频还是 Cloudinary 图片
+        const isR2 = mediaUrl.includes('video.mless.cc.cd') || mediaUrl.includes('r2.dev');
+
+        if (isR2) {
+            // 【R2 视频专用下载通道】直接通过 S3 API 串流，彻底免疫域名被墙、302重定向等问题
+            const command = new GetObjectCommand({
+                Bucket: 'miniless-videos',
+                Key: filename
+            });
+
+            const r2Response = await r2Client.send(command);
+
+            // 强制触发浏览器的“另存为”下载行为
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-            res.setHeader('Content-Type', contentType);
-            cloudinaryRes.pipe(res);
-        }).on('error', (err) => {
-            console.error('Download proxy error:', err);
-            res.status(500).json({ message: 'Failed to download media' });
-        });
+            res.setHeader('Content-Type', r2Response.ContentType || 'video/mp4');
+            
+            // 将 R2 的文件流直接 pipe 吐给客户端
+            r2Response.Body.pipe(res);
+        } else {
+            // 【Cloudinary 图片通道】保持原样
+            const https = require('https');
+            https.get(mediaUrl, (cloudinaryRes) => {
+                const contentType = cloudinaryRes.headers['content-type'] || 'application/octet-stream';
+                res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+                res.setHeader('Content-Type', contentType);
+                cloudinaryRes.pipe(res);
+            }).on('error', (err) => {
+                console.error('Cloudinary download proxy error:', err);
+                res.status(500).json({ message: 'Failed to download media' });
+            });
+        }
 
     } catch (error) {
         console.error('Download route error:', error);
