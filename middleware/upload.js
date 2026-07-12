@@ -1,7 +1,8 @@
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { S3Client } = require('@aws-sdk/client-s3');
-const { Upload } = require('@aws-sdk/lib-storage'); // 引入 AWS 官方流式上传库
+const { Upload } = require('@aws-sdk/lib-storage'); 
+const { PassThrough } = require('stream'); // 🚀 1. 新增：引入 Node 原生中转流
 
 // Configure Cloudinary for images
 cloudinary.config({
@@ -21,7 +22,6 @@ const r2Client = new S3Client({
 });
 
 const R2_BUCKET = 'miniless-videos';
-// ✅ 1. 修正为国内畅通无阻的自定义域名
 const R2_PUBLIC_URL = 'https://video.mless.cc.cd';
 
 // Custom storage engine — images to Cloudinary, videos to R2
@@ -31,21 +31,28 @@ const customStorage = {
             const isVideo = file.mimetype.startsWith('video/');
 
             if (isVideo) {
-                // ✅ 2. 优化：规避文件名中可能存在的中文或特殊字符引发的 URL 编码问题
                 const fileExt = file.originalname.split('.').pop();
                 const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
 
-                // ✅ 3. 优化：使用流式上传（Streaming），视频直接管道输送给 R2，零内存占用
+                // 🚀 2. 核心修复：创建中转蓄水池
+                const passThroughStream = new PassThrough();
+                // 把 Multer 的推流管子，接到蓄水池上
+                file.stream.pipe(passThroughStream);
+
+                // 捕获流传输过程中的错误
+                file.stream.on('error', cb);
+
                 const parallelUploads3 = new Upload({
                     client: r2Client,
                     params: {
                         Bucket: R2_BUCKET,
                         Key: filename,
-                        Body: file.stream, // 直接传递流，不再缓存成 Buffer
+                        Body: passThroughStream, // ✅ 3. 改为把蓄水池给 AWS SDK 消费
                         ContentType: file.mimetype
                     }
                 });
 
+                // 等待 AWS SDK 彻底把蓄水池里的数据搬运完成到 R2
                 await parallelUploads3.done();
 
                 cb(null, {
