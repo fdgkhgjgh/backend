@@ -493,7 +493,6 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
 // Cloudflare R2 S3 Client
 // ==========================================
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
-const router = express.Router();
 const mongoose = require("mongoose");
 const Post = require("../models/Post");
 
