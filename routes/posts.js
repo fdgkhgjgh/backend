@@ -490,13 +490,17 @@ router.delete('/:postId/comments/:commentId', authenticateToken, async(req, res)
 })
 
 // ==========================================
-// 1. 确保路由文件上方有 R2 客户端初始化
+// Cloudflare R2 S3 Client
 // ==========================================
-const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const express = require("express");
+const router = express.Router();
+const mongoose = require("mongoose");
+const Post = require("../models/Post");
 
 const r2Client = new S3Client({
-    region: 'auto',
-    endpoint: `https://1f4ecb5c1d43ebcdd818fe26e5d8d02f.r2.cloudflarestorage.com`,
+    region: "auto",
+    endpoint: "https://1f4ecb5c1d43ebcdd818fe26e5d8d02f.r2.cloudflarestorage.com",
     credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
@@ -504,86 +508,123 @@ const r2Client = new S3Client({
 });
 
 // ==========================================
-// 2. 漏洞修复版：下载代理路由
+// 完整支持视频流式播放的下载代理
 // ==========================================
-router.get('/:id/download', async (req, res) => {
+router.get("/:id/download", async (req, res) => {
     try {
+        // Validate post ID
         if (!mongoose.isValidObjectId(req.params.id)) {
-            return res.status(400).json({ message: 'Invalid post ID' });
+            return res.status(400).json({ message: "Invalid post ID" });
         }
 
         const post = await Post.findById(req.params.id);
         if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
+            return res.status(404).json({ message: "Post not found" });
         }
 
         const mediaUrl = req.query.url;
         if (!mediaUrl) {
-            return res.status(400).json({ message: 'Missing url query parameter' });
+            return res.status(400).json({ message: "Missing url query parameter" });
         }
 
-        // 从请求的 URL 中提取出纯文件名 (例如: 1779535437-abc.mp4)
+        // Extract filename from URL
         const url = new URL(mediaUrl);
-        const filename = url.pathname.split('/').pop();
+        const filename = url.pathname.split("/").pop();
 
         if (!filename) {
-            return res.status(400).json({ message: 'Invalid media URL' });
+            return res.status(400).json({ message: "Invalid media URL" });
         }
 
-        // 收集该帖子下数据库里存的所有媒介链接
+        // Validate media belongs to this post
         const allMediaUrls = [
             ...(post.imageUrls || []),
             ...(post.videoUrls || [])
         ];
 
-        // ✨ 智能安全检查：只要数据库里有任何一个链接包含这个文件名，就说明文件属于该帖子
         const isMatched = allMediaUrls.some(storedUrl => {
             try {
-                const storedFilename = new URL(storedUrl).pathname.split('/').pop();
+                const storedFilename = new URL(storedUrl).pathname.split("/").pop();
                 return storedFilename === filename;
-            } catch (e) {
+            } catch {
                 return false;
             }
         });
 
         if (!isMatched) {
-            return res.status(403).json({ message: 'Media URL does not belong to this post' });
+            return res.status(403).json({ message: "Media URL does not belong to this post" });
         }
 
-        // 判断是否是 R2 视频 (链接里包含绑定的新域名或老 r2.dev 域名)
-        const isR2 = mediaUrl.includes('video.mless.cc.cd') || mediaUrl.includes('r2.dev');
+        // 判断是否是 R2 视频
+        const isR2 = mediaUrl.includes("video.mless.cc.cd") || mediaUrl.includes("r2.dev");
 
-        if (isR2) {
-            // 【R2 视频下载】直接从存储桶内部拉取文件流
-            const command = new GetObjectCommand({
-                Bucket: 'miniless-videos',
-                Key: filename
-            });
-
-            const r2Response = await r2Client.send(command);
-
-            // 强行让浏览器弹出另存为窗口，使用原来的文件名
-            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-            res.setHeader('Content-Type', r2Response.ContentType || 'video/mp4');
-            
-            // 管道式输出，零内存占用
-            r2Response.Body.pipe(res);
-        } else {
-            // 【Cloudinary 图片下载】保持原样
-            const https = require('https');
-            https.get(mediaUrl, (cloudinaryRes) => {
-                const contentType = cloudinaryRes.headers['content-type'] || 'application/octet-stream';
-                res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-                res.setHeader('Content-Type', contentType);
+        if (!isR2) {
+            // Cloudinary fallback
+            const https = require("https");
+            https.get(mediaUrl, cloudinaryRes => {
+                const contentType = cloudinaryRes.headers["content-type"] || "application/octet-stream";
+                res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+                res.setHeader("Content-Type", contentType);
                 cloudinaryRes.pipe(res);
-            }).on('error', (err) => {
-                console.error('Cloudinary proxy error:', err);
-                res.status(500).json({ message: 'Failed to download media' });
             });
+            return;
         }
+
+        // ==========================================
+        // R2 视频流式播放（支持 Range）
+        // ==========================================
+        const command = new GetObjectCommand({
+            Bucket: "miniless-videos",
+            Key: filename
+        });
+
+        const r2Response = await r2Client.send(command);
+
+        const fileSize = r2Response.ContentLength;
+        const contentType = r2Response.ContentType || "application/octet-stream";
+
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+
+        const range = req.headers.range;
+
+        // HEAD 请求（播放器会先请求 HEAD）
+        if (req.method === "HEAD") {
+            res.setHeader("Content-Length", fileSize);
+            res.setHeader("Content-Type", contentType);
+            return res.status(200).end();
+        }
+
+        // 没有 Range → 整个文件下载
+        if (!range) {
+            res.setHeader("Content-Length", fileSize);
+            res.setHeader("Content-Type", contentType);
+            return r2Response.Body.pipe(res);
+        }
+
+        // 有 Range → 分段播放
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+        const chunkSize = end - start + 1;
+
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader("Content-Length", chunkSize);
+        res.setHeader("Content-Type", contentType);
+
+        // 重新请求 R2 分段数据
+        const partialCommand = new GetObjectCommand({
+            Bucket: "miniless-videos",
+            Key: filename,
+            Range: `bytes=${start}-${end}`
+        });
+
+        const partialResponse = await r2Client.send(partialCommand);
+        partialResponse.Body.pipe(res);
 
     } catch (error) {
-        console.error('Download route error:', error);
+        console.error("Download route error:", error);
         res.status(500).json({ message: error.message });
     }
 });
