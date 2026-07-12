@@ -592,10 +592,11 @@ router.get("/:id/download", async (req, res) => {
 
         // 没有 Range → 整个文件下载
         if (!range) {
-            res.setHeader("Content-Length", fileSize);
-            res.setHeader("Content-Type", contentType);
-            return r2Response.Body.pipe(res);
-        }
+    res.setHeader("Content-Length", fileSize);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return r2Response.Body.pipe(res);
+}
 
         // 有 Range → 分段播放
         const parts = range.replace(/bytes=/, "").split("-");
